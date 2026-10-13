@@ -295,7 +295,11 @@ let liveRecord: { holder: string; hours: number; level: string; fetchedAt: numbe
 
 // ------------------------------------------------------------------ websocket bookkeeping
 /** fps/quality: this viewer's own stream settings (Auto on its device), else the global prefs; lastFrameAt paces its frames. */
-type WsData = { role: 'viewer'; id: number; account?: string; since: number; fps?: number; quality?: number; lastFrameAt?: number };
+type WsData = { role: 'viewer'; id: number; account?: string; since: number; fps?: number; quality?: number; lastFrameAt?: number;
+    /** Frame credits: the viewer acks every frame it receives; at most FRAMES_IN_FLIGHT unacked frames, so a slow link
+     *  gets fewer frames instead of an ever-growing queue (latency stays ~one round trip). */
+    acks?: boolean; inflight?: number };
+const FRAMES_IN_FLIGHT = 2;
 const viewerFps = (v: ServerWebSocket<WsData>) => v.data.fps ?? streamFps;
 const viewerQuality = (v: ServerWebSocket<WsData>) => v.data.quality ?? streamQuality;
 const viewers = new Set<ServerWebSocket<WsData>>();
@@ -972,6 +976,9 @@ class Account {
             const buf = byQuality.get(viewerQuality(v)) ?? (any ? byQuality.values().next().value : undefined);
             if (!buf || v.getBufferedAmount() >= 1_000_000) continue;
             if (v.data.lastFrameAt && now - v.data.lastFrameAt < 1000 / viewerFps(v) - 8) continue;
+            // credits: wait for acks, but never stall for good if an ack got lost (1 s)
+            if (v.data.acks && (v.data.inflight ?? 0) >= FRAMES_IN_FLIGHT && now - (v.data.lastFrameAt ?? 0) < 1000) continue;
+            if (v.data.acks) v.data.inflight = (v.data.lastFrameAt && now - v.data.lastFrameAt >= 1000 ? 0 : v.data.inflight ?? 0) + 1;
             v.data.lastFrameAt = now;
             v.send(buf);
         }
@@ -1917,12 +1924,15 @@ try {
                 let m: any;
                 try { m = JSON.parse(message); } catch { return; }
                 const a = viewerAccount(ws);
+                if (m.type === 'ack') { ws.data.inflight = Math.max(0, (ws.data.inflight ?? 0) - 1); return; }
+                if (m.type === 'ping') { ws.send(JSON.stringify({ type: 'pong', t: m.t })); return; }
                 if (m.type === 'select') selectAccount(ws, String(m.account ?? ''));
                 else if (m.type === 'stream') {
                     // this viewer's own stream settings (Auto on its device); null = back to the global prefs
                     const f = Number(m.fps), q = Number(m.quality);
                     ws.data.fps = m.fps == null || !Number.isFinite(f) ? undefined : Math.min(60, Math.max(1, Math.round(f)));
                     ws.data.quality = m.quality == null || !Number.isFinite(q) ? undefined : Math.min(100, Math.max(20, Math.round(q)));
+                    if (m.acks != null) { ws.data.acks = !!m.acks; ws.data.inflight = 0; }
                     onViewersChanged();
                 }
                 else if (m.type === 'input') {

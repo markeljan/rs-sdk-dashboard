@@ -362,6 +362,8 @@ export function startServer(cfg: Config) {
                     try {
                         if (typeof e.data === 'string') ws.send(e.data);
                         else if (ws.getBufferedAmount() < FRAME_BACKLOG_BYTES) ws.send(new Uint8Array(e.data as ArrayBuffer));
+                        // a skipped frame never reaches the viewer, so ack it here (viewers on Auto use frame credits)
+                        else up.send('{"type":"ack"}');
                     } catch { /* closed */ }
                 };
                 up.onclose = () => { try { ws.close(); } catch { /* closed */ } };
