@@ -2,7 +2,7 @@
 
 The public service at dash.soko.tools runs on a single EC2 instance:
 
-- **EC2**: `t3.large` (2 vCPU, 8 GB) running Ubuntu 24.04 with Docker, plus a 4 GB swap file. Each game client is a headless Chromium of about 200–300 MB, so the default cap of 14 clients fits.
+- **EC2**: `c7i.2xlarge` (8 vCPU, 16 GB) running Ubuntu 24.04 with Docker, plus a 4 GB swap file. Each game client is a headless Chromium of about 250 MB, and its CPU use peaks while it loads the map, so burstable `t3` instances choke when several clients start at once. Cap: `RSD_MAX_CLIENTS=30`.
 - **Elastic IP**, with a DNS A record pointing the domain at it.
 - **Caddy**: HTTPS with automatic Let's Encrypt certificates. It proxies WebSockets.
 - **Data**: SQLite plus the encryption secret in `/opt/rs-dashboard/data` (the EBS root volume). Back it up with EBS snapshots.

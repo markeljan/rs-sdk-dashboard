@@ -5,7 +5,7 @@
 set -euo pipefail
 NAME=${NAME:-rs-dashboard}
 REGION=${REGION:-us-east-1}
-INSTANCE_TYPE=${INSTANCE_TYPE:-t3.large}
+INSTANCE_TYPE=${INSTANCE_TYPE:-c7i.2xlarge}
 KEY_FILE=${KEY_FILE:-$HOME/.ssh/$NAME.pem}
 export AWS_REGION=$REGION AWS_PAGER=""
 
