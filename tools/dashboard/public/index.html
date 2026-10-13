@@ -990,13 +990,13 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
     rcan[k] = c;
   }
   let betaFs = false, betaChat = true, betaAccts = true;
-  // phones default to the phone layout + starting in fullscreen (each can be turned off in Settings)
+  // phones default to the phone layout; starting in fullscreen is opt-in (Settings → Start in fullscreen)
   const phone = matchMedia('(hover: none) and (pointer: coarse)').matches;
-  let phoneFs = phone;
+  let phoneFs = false;
   try {
     const b = localStorage.getItem('dash.betaFs'); betaFs = b == null ? phone : b === '1';
     betaChat = localStorage.getItem('dash.betaChat') !== '0'; betaAccts = localStorage.getItem('dash.betaAccts') !== '0';
-    phoneFs = phone && localStorage.getItem('dash.phoneFs') !== '0';
+    phoneFs = phone && localStorage.getItem('dash.phoneFs') === '1';
   } catch {}
   const betaOn = () => betaFs && document.body.classList.contains('fs');
   function regionNorm(el, clientX, clientY) {
