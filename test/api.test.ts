@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { loadConfig } from '../src/config';
 import { startServer } from '../src/server';
 
+process.env.RSD_ADMIN_EMAIL = 'operator@example.com'; // so the first sign-up is a normal user with limits
 const dataDir = mkdtempSync(join(tmpdir(), 'rsd-api-'));
 const cfg = loadConfig({ RSD_MODE: 'hosted', RSD_DATA_DIR: dataDir, PORT: '0', HOST: '127.0.0.1', RSD_SERVER: 'unreachable.invalid', RSD_MAX_ACCOUNTS: '2' });
 const { server } = startServer(cfg);
