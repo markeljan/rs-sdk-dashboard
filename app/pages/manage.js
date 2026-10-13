@@ -18,7 +18,7 @@ async function copy(text, what = 'Copied') { try { await navigator.clipboard.wri
 
 async function boot() {
   me = await api('/me');
-  if (me.needsLogin) return renderAuth(me.signups ? 'signup' : 'login');
+  if (me.needsLogin) return renderAuth(me.signups && new URLSearchParams(location.search).get('mode') !== 'login' ? 'signup' : 'login');
   [{ token }, skill] = await Promise.all([api('/token'), api('/skill')]);
   render();
 }

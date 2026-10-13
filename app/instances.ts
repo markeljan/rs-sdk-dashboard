@@ -118,7 +118,9 @@ export class Instances {
         const proc = spawn(process.execPath, [SERVER], { env, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
         inst.proc = proc;
         const tag = `[user ${inst.userId}]`;
-        const pipe = (s: NodeJS.ReadableStream | null) => s?.on('data', (d: Buffer) => { for (const l of d.toString().split('\n')) if (l.trim()) this.log(`${tag} ${l}`); });
+        // the dashboard prints its own (internal, 127.0.0.1-only) desktop/phone URLs: drop those, users open the front port
+        const internal = /^\s*(desktop|phone):\s+http|multi-account dashboard running on port|\] botDir .* process match/;
+        const pipe = (s: NodeJS.ReadableStream | null) => s?.on('data', (d: Buffer) => { for (const l of d.toString().split('\n')) if (l.trim() && !internal.test(l)) this.log(`${tag} ${l}`); });
         pipe(proc.stdout); pipe(proc.stderr);
         proc.on('exit', code => { if (inst.proc === proc) { inst.proc = null; inst.ready = null; this.log(`${tag} dashboard exited (${code})`); } });
         inst.ready = (async () => {

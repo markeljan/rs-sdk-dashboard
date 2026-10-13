@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1012">
+<title>RS-SDK Dashboard</title>
+<meta name="description" content="Watch and control your rs-sdk bots from anywhere: live game view, phone remote, Bot HQ map, XP and gold tracking. Hosted or self-run, free.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<style>
+:root {
+  --bg: #0e1012; --card: #16191c; --card2: #1c2024; --line: #272c31; --ink: #e8e6e1; --muted: #8e959c; --faint: #5c636a;
+  --gold: #e0a458; --good: #6fcf8a; --bad: #ef7a6a; --radius: 12px; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+a { color: var(--gold); }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 18px; }
+header.top { display: flex; align-items: center; gap: 10px; padding: 14px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--ink); text-decoration: none; }
+.brand img { width: 30px; height: 30px; border-radius: 7px; }
+.grow { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; min-height: 44px; color: var(--ink); text-decoration: none; font: inherit; cursor: pointer; }
+.btn.primary { background: #3a2f1c; border-color: #8a6a35; color: #f6dfb7; font-weight: 600; }
+.btn.sm { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; align-items: center; padding: 28px 0 10px; }
+.hero h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 12px; letter-spacing: -.01em; }
+.hero p { color: var(--muted); font-size: 17px; margin: 0 0 18px; }
+.hero .row { display: flex; gap: 10px; flex-wrap: wrap; }
+.shots { position: relative; min-height: 300px; }
+.shots .desk { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+.shots .phone { position: absolute; right: -6px; bottom: -26px; width: 30%; border-radius: 14px; border: 2px solid #33393f; box-shadow: 0 10px 30px #0009; }
+.feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 46px 0 8px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+.card h3 { margin: 0 0 6px; font-size: 15px; }
+.card p { margin: 0; color: var(--muted); font-size: 14px; }
+h2 { font-size: 22px; margin: 44px 0 6px; }
+.sub { color: var(--muted); margin: 0 0 16px; }
+.opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.opt { display: flex; flex-direction: column; gap: 10px; }
+.opt .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+.opt ol { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 4px; }
+.opt .end { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+pre { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 220px; }
+.note { border-left: 3px solid var(--gold); background: var(--card); border-radius: 8px; padding: 12px 14px; color: var(--muted); font-size: 14px; margin-top: 18px; }
+footer { color: var(--faint); font-size: 13px; padding: 40px 0 30px; text-align: center; }
+#toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+#toast.show { opacity: 1; }
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; }
+  .feats, .opts { grid-template-columns: 1fr; }
+  .shots { margin-bottom: 30px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/"><img src="/icons/icon.svg" alt="">RS-SDK Dashboard</a>
+    <span class="grow"></span>
+    <a class="btn sm" href="https://github.com/markeljan/rs-sdk-dashboard" target="_blank" rel="noopener">GitHub</a>
+    <a class="btn sm" href="/_rsd/login?mode=login">Log in</a>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Your rs-sdk bots, live, from anywhere.</h1>
+      <p>Live game view with phone remote control, a map of every account, XP and gold rates, drop alerts, and what each bot is doing right now. Set it up by pasting one prompt into your agent.</p>
+      <div class="row">
+        <a class="btn primary" href="/_rsd/login">Create a free account</a>
+        <a class="btn" href="#setup">Run it yourself</a>
+      </div>
+    </div>
+    <div class="shots">
+      <img class="desk" src="/_rsd/img/desktop.jpg" alt="Dashboard on desktop: live game view and the bot's current activity">
+      <img class="phone" src="/_rsd/img/phone.jpg" alt="Dashboard on a phone">
+    </div>
+  </section>
+
+  <section class="feats">
+    <div class="card"><h3>Live game, phone remote</h3><p>Watch any account's game and tap, right-click, type or turn the camera. The stream adapts to your connection.</p></div>
+    <div class="card"><h3>What every bot is doing</h3><p>Current script, live log, XP/h, wealth and GP/h, play time, deaths and drops for each account. Pause any bot with one tap.</p></div>
+    <div class="card"><h3>Bot HQ</h3><p>All your accounts on one world map with an event feed, fleet totals, drop alerts and highlights.</p></div>
+    <div class="card"><h3>Cloud game clients</h3><p>Hosted: we keep your accounts logged in 24/7. Your agent's scripts drive them from your own machine.</p></div>
+    <div class="card"><h3>Made for agents</h3><p>One copy-paste skill for Claude Code or Codex adds your bots, hosts their clients and connects their logs.</p></div>
+    <div class="card"><h3>Open source</h3><p>Same code hosted or local. It's the dashboard a 90-bot rs-sdk fleet runs on. MIT.</p></div>
+  </section>
+
+  <h2 id="setup">Pick a setup</h2>
+  <p class="sub">Your bot scripts and agents keep running on your machine either way. The dashboard shows them and can host their game clients.</p>
+  <div class="opts">
+    <div class="card opt">
+      <span class="tag">Hosted · with your agent</span>
+      <h3>Paste one skill</h3>
+      <ol>
+        <li>Create a free account here.</li>
+        <li>Click <b>Copy agent skill</b>: it has your dashboard URL and API token built in.</li>
+        <li>Paste it into Claude Code or Codex inside your rs-sdk checkout. It adds your bots and starts the connector.</li>
+      </ol>
+      <div class="end"><a class="btn primary" href="/_rsd/login">Create a free account</a></div>
+    </div>
+    <div class="card opt">
+      <span class="tag">Hosted · no agent</span>
+      <h3>Add accounts yourself</h3>
+      <ol>
+        <li>Create a free account.</li>
+        <li><b>＋ Add account</b>: enter a username and password, paste a <code>bot.env</code>, or pick your <code>bots</code> folder.</li>
+        <li>Optional: turn on <b>Client</b> to keep an account logged in from our servers.</li>
+      </ol>
+      <div class="end"><a class="btn" href="/_rsd/login">Get started</a></div>
+    </div>
+    <div class="card opt">
+      <span class="tag">Local · on your machine</span>
+      <h3>Run it yourself</h3>
+      <ol>
+        <li>Copy the prompt below into your agent, or run the commands yourself.</li>
+        <li>No limits, nothing leaves your machine. Phones on your Wi-Fi can open it too.</li>
+      </ol>
+      <pre id="localCmd">git clone https://github.com/markeljan/rs-sdk-dashboard.git
+cd rs-sdk-dashboard && bun install
+RS_SDK_DIR=../rs-sdk bun start</pre>
+      <div class="end"><button class="btn sm" data-copy="localCmd">Copy commands</button><button class="btn sm" data-copy="localPrompt">Copy agent prompt</button><a class="btn sm" href="https://github.com/markeljan/rs-sdk-dashboard/blob/main/docs/setup-local.md" target="_blank" rel="noopener">Guide</a></div>
+    </div>
+  </div>
+
+  <div class="note"><b>Hosted beta:</b> dash.soko.tools is a free test. It runs on one server, and cloud game clients are limited (3 per user, a few dozen in total). If lots of people use it, limits may get stricter, or the hosted setup may grow. Running locally has no limits.</div>
+
+  <footer>RS-SDK Dashboard · for <a href="https://github.com/MaxBittker/rs-sdk" target="_blank" rel="noopener">rs-sdk</a> · <a href="https://github.com/markeljan/rs-sdk-dashboard" target="_blank" rel="noopener">source</a> · bots only, no hand-playing on the demo server</footer>
+</div>
+<pre id="localPrompt" hidden>Set up the RS-SDK Dashboard (https://github.com/markeljan/rs-sdk-dashboard) locally for my rs-sdk bots:
+1. Make sure Bun is installed (curl -fsSL https://bun.sh/install | bash).
+2. Find my rs-sdk checkout (the folder with bots/&lt;name&gt;/bot.env). If there isn't one, clone https://github.com/MaxBittker/rs-sdk.git, run bun install, and create a bot with bun bots/create-bot.ts &lt;name&gt;.
+3. Clone https://github.com/markeljan/rs-sdk-dashboard.git next to it and run bun install in it.
+4. Start it so that it keeps running: RS_SDK_DIR=&lt;path to rs-sdk&gt; bun start. Check http://localhost:4747/_rsd/health. If other people share this network, set RSD_PASSWORD.
+5. Only one game client can be logged in per account. For accounts with no client running anywhere else, let the dashboard run it: curl -X PATCH http://localhost:4747/_rsd/api/accounts/&lt;name&gt; -H 'content-type: application/json' -d '{"runClient":true}'. New characters need await bot.skipTutorial() once.
+6. Tell me the URL for this computer and the "Phone (same Wi-Fi)" URL it printed.</pre>
+<div id="toast" role="status"></div>
+<script>
+  const toast = (m) => { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2000); };
+  document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(document.getElementById(b.dataset.copy).textContent); toast('Copied'); } catch { toast('Copy failed - select the text instead'); }
+  }));
+</script>
+</body>
+</html>

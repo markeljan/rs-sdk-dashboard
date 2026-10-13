@@ -56,7 +56,9 @@ describe('pure helpers', () => {
 describe('hosted mode', () => {
     const alice = client(), bob = client();
     test('anonymous visitors go to the login page', async () => {
-        expect((await alice('/')).location).toBe(`${base}/_rsd/login`);
+        const landing = await alice('/');
+        expect(landing.status).toBe(200);
+        expect(landing.text).toContain('Pick a setup');
         expect((await alice('/_rsd/api/me')).body).toMatchObject({ mode: 'hosted', needsLogin: true, signups: true });
         expect((await alice('/api/accounts')).status).toBe(401);
         expect((await alice('/_rsd/api/accounts')).status).toBe(401);

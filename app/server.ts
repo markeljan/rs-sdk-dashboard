@@ -96,7 +96,8 @@ export function startServer(cfg: Config) {
         new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', ...headers } });
     const bad = (error: string, status = 400) => json({ error }, status);
     const body = async (req: Request): Promise<any> => { try { return await req.json(); } catch { return {}; } };
-    const page = (name: string) => new Response(Bun.file(join(PAGES, name)), { headers: { 'content-type': name.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/html; charset=utf-8', 'cache-control': 'no-cache' } });
+    const TYPES: Record<string, string> = { js: 'text/javascript; charset=utf-8', jpg: 'image/jpeg', png: 'image/png', svg: 'image/svg+xml', html: 'text/html; charset=utf-8' };
+    const page = (name: string) => new Response(Bun.file(join(PAGES, name)), { headers: { 'content-type': TYPES[name.split('.').pop()!] ?? 'text/html; charset=utf-8', 'cache-control': name.startsWith('img/') ? 'public, max-age=86400' : 'no-cache' } });
 
     // ------------------------------------------------------------ accounts
     async function addAccount(user: User, b: any) {
@@ -400,7 +401,7 @@ export function startServer(cfg: Config) {
             }
             const user = userOf(req);
             if (!user) {
-                if (path === '/' || path === '/index.html') return Response.redirect(`${origin(req)}/_rsd/login`, 302);
+                if (path === '/' || path === '/index.html') return cfg.mode === 'hosted' ? page('landing.html') : Response.redirect(`${origin(req)}/_rsd/login`, 302);
                 return new Response('not logged in', { status: 401 });
             }
             const port = await instances.ensure(user.id);

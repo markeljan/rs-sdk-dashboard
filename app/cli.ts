@@ -36,10 +36,15 @@ switch (cmd) {
         const { server } = startServer(cfg);
         const urls = [`http://localhost:${server.port}`];
         if (!existsSync(join(import.meta.dir, '..', 'tools', 'dashboard', 'server.ts'))) console.error('tools/dashboard is missing - run: bun scripts/sync-from-rs-sdk.ts <rs-sdk checkout>');
-        for (const list of Object.values(networkInterfaces())) for (const i of list ?? []) if (i.family === 'IPv4' && !i.internal) urls.push(`http://${i.address}:${server.port}`);
+        // LAN addresses for phones on the same Wi-Fi; skip virtual adapters (VMs, Docker, VPN tunnels)
+        for (const [ifname, list] of Object.entries(networkInterfaces())) {
+            if (/^(bridge|vmnet|utun|docker|veth|br-|vboxnet|llw|awdl)/.test(ifname)) continue;
+            for (const i of list ?? []) if (i.family === 'IPv4' && !i.internal) urls.push(`http://${i.address}:${server.port}`);
+        }
         console.log(`\n  RS-SDK Dashboard (${cfg.mode} mode) - data in ${cfg.dataDir}`);
         console.log(`  Agent setup: open ${cfg.publicUrl || urls[0]}/_rsd/manage and copy the agent skill${cfg.mode === 'local' ? ' (or: bun app/cli.ts skill)' : ''}`);
-        for (const u of urls) console.log(`  ${u}`);
+        console.log(`  This computer:  ${urls[0]}`);
+        for (const u of urls.slice(1)) console.log(`  Phone (same Wi-Fi): ${u}`);
         if (cfg.mode === 'local' && !cfg.localPassword) console.log('  No RSD_PASSWORD set: anyone on your network who can reach this port can use it.');
         console.log('');
         break;
