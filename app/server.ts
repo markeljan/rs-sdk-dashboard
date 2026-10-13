@@ -123,6 +123,33 @@ export function startServer(cfg: Config) {
     const publicAccount = (a: NonNullable<ReturnType<Store['findAccount']>>) =>
         ({ name: a.name, server: a.server, runClient: a.runClient, source: a.source, hasPassword: !!a.password, createdAt: a.created_at });
 
+    // ------------------------------------------------------------ agent liveness
+    // The dashboard shows a bot as running when it sees its process, or a fresh script-host status file
+    // (bots/*/script-host.json, the rs-sdk script host). Agents elsewhere have no process here, so every activity/log
+    // post marks the account as run by "<script>" for 2 minutes through such a file. Hosted, game account names are
+    // unique across users, so one file per user can't mark anyone else's account.
+    const agentSeen = new Map<number, Map<string, { at: number; script: string }>>();
+    function writeAgentStatus(userId: number) {
+        const seen = agentSeen.get(userId);
+        if (!seen) return;
+        const now = Date.now();
+        for (const [n, v] of seen) if (now - v.at > 110_000) seen.delete(n);
+        const dir = join(import.meta.dir, '..', 'bots', `agents-user-${userId}`);
+        mkdirSync(dir, { recursive: true });
+        const accts = new Map(store.listAccounts(userId).map(a => [a.name, a]));
+        writeFileSync(join(dir, 'script-host.json'), JSON.stringify({
+            pid: process.pid, at: new Date(now).toISOString(),
+            bots: [...seen].filter(([n]) => accts.has(n)).map(([name, v]) => ({ name, script: v.script, entry: v.script.replace(/[^\w./-]/g, '').slice(0, 60) || 'agent', state: 'agent' })),
+        }) + '\n');
+    }
+    function agentAlive(userId: number, name: string, script: string) {
+        let seen = agentSeen.get(userId);
+        if (!seen) agentSeen.set(userId, seen = new Map());
+        seen.set(name, { at: Date.now(), script });
+        writeAgentStatus(userId);
+    }
+    setInterval(() => { for (const u of agentSeen.keys()) writeAgentStatus(u); }, 30_000);
+
     // ------------------------------------------------------------ /_rsd API
     async function api(req: Request, url: URL, srv: Server<WsData>): Promise<Response> {
         const path = url.pathname.slice('/_rsd/api'.length), method = req.method;
@@ -234,6 +261,7 @@ export function startServer(cfg: Config) {
             const dir = acct.source === 'rs-sdk' && acct.bot_dir ? acct.bot_dir : join(instances.userDir(user.id), 'accounts', acct.name);
             if (sub === 'activity' && method === 'POST') {
                 const b = await body(req);
+                agentAlive(user.id, acct.name, String(b.script ?? 'agent'));
                 mkdirSync(dir, { recursive: true });
                 const file = join(dir, 'tasks.json');
                 let tasks: any = {};
@@ -242,14 +270,15 @@ export function startServer(cfg: Config) {
                 if (b.goal != null) tasks.goal = String(b.goal).slice(0, 300);
                 writeFileSync(file, JSON.stringify(tasks, null, 1) + '\n');
                 if (b.text != null || b.current != null) appendFileSync(join(dir, 'agent.log'), `[${new Date().toLocaleTimeString()}] ${tasks.current}\n`);
-                return json({ ok: true });
+                return json({ ok: true, paused: existsSync(join(dir, 'PAUSED')) });
             }
             if (sub === 'log' && method === 'POST') {
                 const b = await body(req);
+                agentAlive(user.id, acct.name, String(b.script ?? 'agent'));
                 const lines = (Array.isArray(b.lines) ? b.lines : String(b.text ?? '').split('\n')).map((l: unknown) => String(l).slice(0, 500)).filter(Boolean).slice(0, 200);
                 mkdirSync(dir, { recursive: true });
                 if (lines.length) appendFileSync(join(dir, 'agent.log'), lines.map((l: string) => `[${new Date().toLocaleTimeString()}] ${l}`).join('\n') + '\n');
-                return json({ ok: true, lines: lines.length });
+                return json({ ok: true, lines: lines.length, paused: existsSync(join(dir, 'PAUSED')) });
             }
             if (sub === 'botenv' && method === 'GET') return new Response(`BOT_USERNAME=${acct.name}\nPASSWORD=${acct.password}\nSERVER=${acct.server}\nSHOW_CHAT=true\n`, { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
         }

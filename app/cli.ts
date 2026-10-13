@@ -38,7 +38,7 @@ switch (cmd) {
         if (!existsSync(join(import.meta.dir, '..', 'tools', 'dashboard', 'server.ts'))) console.error('tools/dashboard is missing - run: bun scripts/sync-from-rs-sdk.ts <rs-sdk checkout>');
         for (const list of Object.values(networkInterfaces())) for (const i of list ?? []) if (i.family === 'IPv4' && !i.internal) urls.push(`http://${i.address}:${server.port}`);
         console.log(`\n  RS-SDK Dashboard (${cfg.mode} mode) - data in ${cfg.dataDir}`);
-        console.log(`  Agent setup: open ${urls[0]}/_rsd/manage and copy the agent skill (or: bun app/cli.ts skill)`);
+        console.log(`  Agent setup: open ${cfg.publicUrl || urls[0]}/_rsd/manage and copy the agent skill${cfg.mode === 'local' ? ' (or: bun app/cli.ts skill)' : ''}`);
         for (const u of urls) console.log(`  ${u}`);
         if (cfg.mode === 'local' && !cfg.localPassword) console.log('  No RSD_PASSWORD set: anyone on your network who can reach this port can use it.');
         console.log('');

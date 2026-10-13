@@ -63,10 +63,14 @@ export async function activity(account: string, text: string, goal?: string) {
     if (!url || !token) return;
     await fetch(\`\${url}/_rsd/api/accounts/\${encodeURIComponent(account)}/activity\`, {
         method: 'POST', headers: { authorization: \`Bearer \${token}\`, 'content-type': 'application/json' },
-        body: JSON.stringify({ text, goal }), signal: AbortSignal.timeout(5000),
-    }).catch(() => {});
+        body: JSON.stringify({ text, goal, script: 'my-script' }), signal: AbortSignal.timeout(5000),
+    }).then(r => r.json()).catch(() => ({}));
 }
 \`\`\`
+
+While a script posts at least every ~2 minutes, the dashboard shows the bot as running (\`script\` is the label).
+The answer is \`{"ok":true,"paused":false}\`: when the user presses **Pause** on the dashboard, \`paused\` turns true -
+stop acting (keep posting to see when it turns false again).
 
 Log lines: \`POST $RSD_URL/_rsd/api/accounts/<name>/log\` with \`{"lines": ["...", "..."]}\`.
 
