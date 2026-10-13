@@ -294,7 +294,10 @@ type PlaytimeFile = {
 let liveRecord: { holder: string; hours: number; level: string; fetchedAt: number } | null = null;
 
 // ------------------------------------------------------------------ websocket bookkeeping
-type WsData = { role: 'viewer'; id: number; account?: string; since: number };
+/** fps/quality: this viewer's own stream settings (Auto on its device), else the global prefs; lastFrameAt paces its frames. */
+type WsData = { role: 'viewer'; id: number; account?: string; since: number; fps?: number; quality?: number; lastFrameAt?: number };
+const viewerFps = (v: ServerWebSocket<WsData>) => v.data.fps ?? streamFps;
+const viewerQuality = (v: ServerWebSocket<WsData>) => v.data.quality ?? streamQuality;
 const viewers = new Set<ServerWebSocket<WsData>>();
 let wsSeq = 0;
 
@@ -960,8 +963,21 @@ class Account {
         this.frameAt = Date.now();
         this.frameTimes.push(this.frameAt);
         if (meta) this.frameMeta = { ...this.frameMeta, ...meta };
-        for (const v of this.viewersOf()) if (v.getBufferedAmount() < 1_000_000) v.send(buf);
+        this.sendFrames(new Map([[streamQuality, buf]]), true);
     }
+    /** Encoded frames by quality: every viewer that is due (its own fps) and not backed up gets the one at its quality. */
+    sendFrames(byQuality: Map<number, Uint8Array>, any = false) {
+        const now = Date.now();
+        for (const v of this.viewersOf()) {
+            const buf = byQuality.get(viewerQuality(v)) ?? (any ? byQuality.values().next().value : undefined);
+            if (!buf || v.getBufferedAmount() >= 1_000_000) continue;
+            if (v.data.lastFrameAt && now - v.data.lastFrameAt < 1000 / viewerFps(v) - 8) continue;
+            v.data.lastFrameAt = now;
+            v.send(buf);
+        }
+    }
+    /** Highest frame rate any viewer of this account wants (the capture + game render rate). */
+    maxViewerFps() { return Math.max(this.mjpegClients ? streamFps : 0, ...this.viewersOf().map(viewerFps)); }
     streamStatus() {
         const now = Date.now();
         while (this.frameTimes.length && now - this.frameTimes[0]! > 5000) this.frameTimes.shift();
@@ -1459,7 +1475,7 @@ class ManagedClient {
     /** Watched → the chosen stream rate (60 = the client's uncapped ~70 fps); unwatched → IDLE_FPS. */
     async applyGameFps() {
         const page = this.page;
-        const want = this.acct.viewerCount() > 0 || Date.now() < this.boostUntil ? Math.min(50, streamFps) : IDLE_FPS;
+        const want = this.acct.viewerCount() > 0 || Date.now() < this.boostUntil ? Math.min(50, Math.max(IDLE_FPS, this.acct.maxViewerFps() || streamFps)) : IDLE_FPS;
         if (!page || this.applyingFps || this.gameFps === want) return;
         this.applyingFps = true;
         try {
@@ -1475,18 +1491,28 @@ class ManagedClient {
         const page = this.page;
         if (!page || this.capturing || this.acct.viewerCount() === 0) return;
         const now = Date.now();
-        if (now - this.lastCaptureAt < 1000 / streamFps - 4) return;
+        if (now - this.lastCaptureAt < 1000 / Math.max(1, this.acct.maxViewerFps()) - 4) return;
         this.lastCaptureAt = now;
         this.capturing = true; // no-overlap guard
         try {
+            // one encode per quality some viewer wants (viewers on Auto pick their own); /stream and /frame.jpg use the global one
+            const qs = [...new Set([...this.acct.viewersOf().map(viewerQuality), ...(this.acct.mjpegClients ? [streamQuality] : [])])];
             const r = await Promise.race([
-                page.evaluate((q: number) => {
+                page.evaluate((qs: number[]) => {
                     const c = (document.getElementById('canvas') || document.querySelector('canvas')) as HTMLCanvasElement | null;
-                    return c && c.width ? { d: q >= 100 ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', q / 100), w: c.width, h: c.height } : null;
-                }, streamQuality),
+                    return c && c.width ? { d: qs.map(q => q >= 100 ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', q / 100)), w: c.width, h: c.height } : null;
+                }, qs.length ? qs : [streamQuality]),
                 sleep(3000).then(() => null),
             ]);
-            if (r) this.acct.onFrame(Buffer.from(r.d.slice(r.d.indexOf(',') + 1), 'base64'), { w: r.w, h: r.h, page: 'managed headless client', visible: true });
+            if (r) {
+                const byQ = new Map<number, Uint8Array>();
+                (qs.length ? qs : [streamQuality]).forEach((q, i) => byQ.set(q, Buffer.from(r.d[i]!.slice(r.d[i]!.indexOf(',') + 1), 'base64')));
+                const acct = this.acct;
+                acct.frame = byQ.get(streamQuality) ?? byQ.values().next().value!;
+                acct.frameSeq++; acct.frameAt = Date.now(); acct.frameTimes.push(acct.frameAt);
+                acct.frameMeta = { ...acct.frameMeta, w: r.w, h: r.h, page: 'managed headless client', visible: true };
+                acct.sendFrames(byQ);
+            }
         } catch { /* page busy / navigating */ }
         finally { this.capturing = false; }
     }
@@ -1892,6 +1918,13 @@ try {
                 try { m = JSON.parse(message); } catch { return; }
                 const a = viewerAccount(ws);
                 if (m.type === 'select') selectAccount(ws, String(m.account ?? ''));
+                else if (m.type === 'stream') {
+                    // this viewer's own stream settings (Auto on its device); null = back to the global prefs
+                    const f = Number(m.fps), q = Number(m.quality);
+                    ws.data.fps = m.fps == null || !Number.isFinite(f) ? undefined : Math.min(60, Math.max(1, Math.round(f)));
+                    ws.data.quality = m.quality == null || !Number.isFinite(q) ? undefined : Math.min(100, Math.max(20, Math.round(q)));
+                    onViewersChanged();
+                }
                 else if (m.type === 'input') {
                     const r = forwardInput(a, m.ev, ws);
                     if (!r.ok) ws.send(JSON.stringify({ type: 'ack', ok: false, error: r.error }));
