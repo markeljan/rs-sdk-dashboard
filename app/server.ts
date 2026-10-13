@@ -46,7 +46,7 @@ export function startServer(cfg: Config) {
         }
         if (imported.length) log(`imported ${seen.size} account(s) from ${[cfg.envAccounts && 'RSD_ACCOUNTS', cfg.accountsFile, cfg.rsSdkDir && `${cfg.rsSdkDir}/bots`].filter(Boolean).join(', ')}`);
     }
-    if (cfg.adminEmail) { const admin = store.getUserByEmail(cfg.adminEmail); if (admin && !admin.is_admin) store.setAdmin(admin.id); }
+    for (const email of cfg.adminEmails) { const admin = store.getUserByEmail(email); if (admin && !admin.is_admin) store.setAdmin(admin.id); }
     void instances.bootClients();
 
     // ------------------------------------------------------------ auth
@@ -171,7 +171,7 @@ export function startServer(cfg: Config) {
             if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 200) return bad('enter a valid email address');
             if (password.length < 8) return bad('password: at least 8 characters');
             if (store.getUserByEmail(email)) return bad('an account with that email exists - log in instead', 409);
-            const u = await store.createUser(email, password, cfg.adminEmail ? email.toLowerCase() === cfg.adminEmail : store.userCount() === 0);
+            const u = await store.createUser(email, password, cfg.adminEmails.length ? cfg.adminEmails.includes(email.toLowerCase()) : store.userCount() === 0);
             log(`signup: user ${u.id}`);
             return json({ ok: true }, 200, { 'set-cookie': sessionCookie(req, store.createSession(u.id), 30 * 86400) });
         }

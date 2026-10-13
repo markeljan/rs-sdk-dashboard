@@ -23,7 +23,7 @@ const files = Object.keys(built.metafile!.inputs).map(rel).filter(p => !p.includ
 
 // Whole directories the code reads at runtime (static files, wasm, icons), not visible to the bundler.
 const dirs = ['tools/dashboard', 'server/vendor/rsmod-pathfinder', 'server/engine/public/img/skill'];
-const extra = ['server/webclient/package.json', 'server/webclient/tsconfig.json', 'server/webclient/LICENSE', 'tools/quests/process-identity.ts', 'LICENSE:LICENSE-rs-sdk'];
+const extra = ['server/webclient/out/bot/client.js', 'server/webclient/package.json', 'server/webclient/tsconfig.json', 'server/webclient/LICENSE', 'tools/quests/process-identity.ts', 'LICENSE:LICENSE-rs-sdk'];
 for (const d of ['tools', 'sdk', 'server']) rmSync(join(dst, d), { recursive: true, force: true });
 for (const d of dirs) cpSync(join(src, d), join(dst, d), { recursive: true, filter: s => !/\/tools\/dashboard\/remote(\/|$)|\/node_modules(\/|$)|\.DS_Store$/.test(s) });
 for (const entry of [...files, ...extra]) {

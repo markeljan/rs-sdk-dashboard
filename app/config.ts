@@ -31,7 +31,8 @@ export function loadConfig(over: Record<string, string | undefined> = {}) {
         accountsFile: e.RSD_ACCOUNTS_FILE || '',
         rsSdkDir: e.RS_SDK_DIR ? resolve(e.RS_SDK_DIR.replace(/^~(?=\/|$)/, homedir())) : '',
         signups: bool(e.RSD_SIGNUPS, true),
-        adminEmail: (e.RSD_ADMIN_EMAIL || '').toLowerCase(),
+        /** Comma-separated: these users are admins (no per-user limits). */
+        adminEmails: (e.RSD_ADMIN_EMAIL || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean),
         maxAccountsPerUser: num(e.RSD_MAX_ACCOUNTS, mode === 'hosted' ? 20 : 1000),
         maxClientsPerUser: num(e.RSD_MAX_CLIENTS_PER_USER, mode === 'hosted' ? 3 : 1000),
         maxClientsTotal: num(e.RSD_MAX_CLIENTS, mode === 'hosted' ? 14 : 1000),

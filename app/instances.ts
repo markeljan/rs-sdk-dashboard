@@ -80,7 +80,10 @@ export class Instances {
         const env: Record<string, string> = {
             ...process.env as Record<string, string>, ...this.cfg.passEnv,
             PORT: String(inst.port), HOST: '127.0.0.1', DATA_DIR: telemetry, ACCOUNTS_FILE: join(telemetry, 'accounts.json'),
-            LOCAL_BOT_BUNDLE: '0', LITE_HOST_STATUS: join(telemetry, 'no-lite-host.json'),
+            // The rs-sdk fork's bot bundle (server/webclient/out/bot/client.js, synced) is served to game clients only while its
+            // revision equals the game server's; it adds fork-only bot actions. RSD_FORK_BUNDLE=0 always uses the server's own.
+            LOCAL_BOT_BUNDLE: process.env.RSD_FORK_BUNDLE === '0' ? '0' : '1', LOCAL_BOT_BUNDLE_REBUILD: '0',
+            LITE_HOST_STATUS: join(telemetry, 'no-lite-host.json'),
         };
         delete env.DASH_TOKEN;
         if (this.cfg.passEnv.CHROME_PATH && !env.PUPPETEER_EXECUTABLE_PATH) env.PUPPETEER_EXECUTABLE_PATH = this.cfg.passEnv.CHROME_PATH;
