@@ -20,6 +20,8 @@ const DASH_PUBLIC = join(import.meta.dir, '..', 'tools', 'dashboard', 'public');
 const VERSION = JSON.parse(readFileSync(join(import.meta.dir, '..', 'package.json'), 'utf8')).version as string;
 const COOKIE = 'rsd_session';
 const NAME_RE = /^[a-zA-Z0-9 _-]{1,12}$/;
+/** Max bytes queued to one viewer before video frames are skipped (about 2 frames at High quality). */
+const FRAME_BACKLOG_BYTES = Number(process.env.RSD_FRAME_BACKLOG ?? 192 * 1024);
 const redact = (s: string) => s.replace(/(password=)[^&\s"']+/gi, '$1***');
 
 type WsData = { userId: number; port: number; path: string; upstream: WebSocket | null; queue: (string | Buffer)[] };
@@ -352,7 +354,16 @@ export function startServer(cfg: Config) {
                 up.binaryType = 'arraybuffer';
                 ws.data.upstream = up;
                 up.onopen = () => { for (const m of ws.data.queue) up.send(m); ws.data.queue = []; };
-                up.onmessage = e => { try { ws.send(typeof e.data === 'string' ? e.data : new Uint8Array(e.data as ArrayBuffer)); } catch { /* closed */ } };
+                // The dashboard skips frames for viewers that fall behind, but it only sees this proxy's local socket, which
+                // never does. Apply the same rule toward the real viewer: drop video frames (binary) while its send buffer
+                // is backed up, so a slow phone link shows the newest frame instead of a growing backlog. Status and
+                // other text messages always go through.
+                up.onmessage = e => {
+                    try {
+                        if (typeof e.data === 'string') ws.send(e.data);
+                        else if (ws.getBufferedAmount() < FRAME_BACKLOG_BYTES) ws.send(new Uint8Array(e.data as ArrayBuffer));
+                    } catch { /* closed */ }
+                };
                 up.onclose = () => { try { ws.close(); } catch { /* closed */ } };
                 up.onerror = () => { try { ws.close(); } catch { /* closed */ } };
             },
