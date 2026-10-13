@@ -7,6 +7,9 @@ const fmt = n => n == null ? '–' : Math.abs(n) >= 1e6 ? (n / 1e6).toFixed(n >=
 const ago = t => { if (!t) return 'never'; const s = Math.round((Date.now() - t) / 1000); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`; };
 const app = $('#app');
 
+const FPS_KEY = 'rsd.fps';
+function defaultFps() { const c = navigator.connection; return c && (c.saveData || c.type === 'cellular' || /2g|3g/.test(c.effectiveType || '')) ? 3 : 10; }
+function viewFps() { try { return Number(localStorage.getItem(FPS_KEY)) || defaultFps(); } catch { return defaultFps(); } }
 const S = { me: null, accounts: new Map(), view: null, ws: null, wsDown: 0, tab: 'overview', frames: 0, lastFrameAt: 0, rightMode: false, keysOn: false, logTimer: null };
 
 function toast(msg, ms = 2600) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms); }
@@ -114,10 +117,7 @@ function onboarding() {
     <div class="card"><h2>1 · Add an account here</h2><p>Username and password from your bot's <span class="mono">bot.env</span>, or paste the whole file. New to rs-sdk? Generate a fresh account.</p><button class="btn primary" id="obAdd">＋ Add account</button></div>
     <div class="card"><h2>2 · ${S.me.mode === 'hosted' ? 'From your agent or terminal' : 'From the environment'}</h2>
       ${S.me.mode === 'hosted'
-        ? `<p>Create an API token in ⚙ Settings, then add accounts from any machine (e.g. your rs-sdk checkout):</p><pre class="code">curl -X POST ${esc(origin)}/api/accounts \\
-  -H "Authorization: Bearer $RSD_TOKEN" \\
-  -H "content-type: application/json" \\
-  -d '{"name":"mybot","password":"…","runClient":true}'</pre>`
+        ? `<p>Got an rs-sdk checkout with many bots? Create an API token in ⚙ Settings, then run this inside the checkout to add every <span class="mono">bots/*/bot.env</span>:</p><pre class="code">curl -fsSL ${esc(origin)}/connect.sh | RSD_TOKEN=rsd_… bash</pre><p>Or use <b>Import many</b> in ＋ Add account to pick the <span class="mono">bots</span> folder.</p>`
         : `<p>Start the dashboard with your accounts, or point it at your rs-sdk checkout:</p><pre class="code">RS_SDK_DIR=~/rs-sdk bun start
 RSD_ACCOUNTS="mybot:secret, alt2:pw!" bun start
 bun src/cli.ts import ~/rs-sdk/bots/mybot/bot.env</pre>`}
@@ -182,6 +182,7 @@ function renderControls(c, ctl) {
       <button class="btn" id="cType">⌨ Type</button>
       <button class="btn" data-press="Escape">Esc</button>
       <span class="spacer"></span>
+      <select class="btn" id="cFps" title="Live view frame rate (lower uses less mobile data)">${[[2, 'Data saver'], [5, '5 fps'], [10, '10 fps'], [20, '20 fps']].map(([f, l]) => `<option value="${f}" ${viewFps() === f ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <button class="btn" id="cReload" title="Reload the game page">↻</button>
       <button class="btn danger" id="cStop">■ Stop client</button>`
     : `<span class="muted small">Observe-only</span><span class="spacer"></span><button class="btn primary" id="cRun">▶ Run game client</button>`}`;
@@ -190,6 +191,7 @@ function renderControls(c, ctl) {
   $('#cReload')?.addEventListener('click', async () => { await api(`/api/accounts/${c.id}/client/reload`, { method: 'POST' }); toast('Reloading game page'); });
   $('#cRight')?.addEventListener('click', e => { S.rightMode = !S.rightMode; e.currentTarget.classList.toggle('on', S.rightMode); });
   $('#cType')?.addEventListener('click', () => typeText());
+  $('#cFps')?.addEventListener('change', e => { const f = Number(e.target.value); try { localStorage.setItem(FPS_KEY, String(f)); } catch {} if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ t: 'fps', fps: f })); });
   ctl.querySelectorAll('[data-key]').forEach(b => holdKey(b, b.dataset.key));
   ctl.querySelectorAll('[data-press]').forEach(b => b.onclick = () => send({ kind: 'key', key: b.dataset.press, action: 'press' }));
 }
@@ -400,7 +402,7 @@ let watching;
 function watch(id = route()) {
   if (watching === id && S.ws?.readyState === 1 && watch.sent === S.ws) return;
   watching = id; S.view = null; S.lastFrameAt = 0;
-  if (S.ws?.readyState === 1) { S.ws.send(JSON.stringify({ t: 'watch', id })); watch.sent = S.ws; }
+  if (S.ws?.readyState === 1) { S.ws.send(JSON.stringify({ t: 'watch', id, fps: viewFps() })); watch.sent = S.ws; }
 }
 
 // ------------------------------------------------------------------ modals
@@ -419,7 +421,7 @@ function modal(html, bind) {
 
 function openAdd() {
   modal(`<h2>Add an account</h2>
-    <div class="tabs"><button class="on" data-m="form">Username + password</button><button data-m="env">Paste bot.env</button></div>
+    <div class="tabs"><button class="on" data-m="form">Username + password</button><button data-m="env">Paste bot.env</button><button data-m="bulk">Import many</button></div>
     <form id="addForm">
       <div id="mForm">
         <div class="field"><label for="aName">Game username</label><div class="row"><input class="input grow" id="aName" maxlength="12" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="mybot"><button type="button" class="btn sm" id="aGen" title="Create a brand-new random account">Generate new</button></div></div>
@@ -427,13 +429,20 @@ function openAdd() {
         <div class="field"><label for="aServer">Game server</label><input class="input" id="aServer" value="${esc(S.me.defaultServer)}" autocapitalize="off" spellcheck="false"></div>
       </div>
       <div id="mEnv" class="hidden"><div class="field"><label for="aEnv">Contents of bots/&lt;name&gt;/bot.env</label><textarea class="input" id="aEnv" placeholder="BOT_USERNAME=mybot&#10;PASSWORD=…&#10;SERVER=rs-sdk-demo.fly.dev"></textarea></div></div>
+      <div id="mBulk" class="hidden">
+        <div class="field"><label for="aDir">Pick your rs-sdk <b>bots</b> folder (every <span class="mono">bot.env</span> inside is added)</label><input class="input" id="aDir" type="file" webkitdirectory multiple></div>
+        <p class="small muted">Or from a terminal in your rs-sdk checkout (needs an API token from ⚙ Settings):</p>
+        <div class="copywrap"><pre class="code" id="bulkCmd">curl -fsSL ${esc(S.me.publicUrl)}/connect.sh | RSD_TOKEN=rsd_… bash</pre><button type="button" class="btn sm copy" id="cpBulk">Copy</button></div>
+        <div class="msgs" id="bulkLog"></div>
+      </div>
       <label class="check"><input type="checkbox" id="aRun"><span><b>Run the game client on this dashboard</b><br><span class="small muted">${S.me.mode === 'hosted' ? 'Keeps the account logged in from our servers 24/7, so your scripts work while your computer is off, and you can watch/tap in the game.' : 'A headless browser on this machine keeps the account logged in; you can watch and tap in the game from any device.'} Only one client can be logged in per account: close yours first.</span></span></label>
       <div class="err" id="aErr"></div>
       <div class="actions"><button type="button" class="btn ghost" id="aCancel">Cancel</button><button class="btn primary">Add account</button></div>
       <p class="small muted" id="genNote"></p>
     </form>`, (bg, close) => {
     let m = 'form';
-    bg.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { m = b.dataset.m; bg.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); $('#mForm', bg).classList.toggle('hidden', m !== 'form'); $('#mEnv', bg).classList.toggle('hidden', m !== 'env'); });
+    bg.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { m = b.dataset.m; bg.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); $('#mForm', bg).classList.toggle('hidden', m !== 'form'); $('#mEnv', bg).classList.toggle('hidden', m !== 'env'); $('#mBulk', bg).classList.toggle('hidden', m !== 'bulk'); });
+    $('#cpBulk', bg).onclick = () => copy($('#bulkCmd', bg).textContent);
     $('#aCancel', bg).onclick = close;
     $('#aGen', bg).onclick = async () => {
       const g = await api('/api/accounts/generate', { method: 'POST' });
@@ -442,6 +451,20 @@ function openAdd() {
     };
     $('#addForm', bg).onsubmit = async e => {
       e.preventDefault();
+      if (m === 'bulk') {
+        const files = [...($('#aDir', bg).files || [])].filter(f => f.name === 'bot.env' && !/(^|\/)_[^/]*\//.test(f.webkitRelativePath || ''));
+        const log = $('#bulkLog', bg);
+        if (!files.length) { $('#aErr', bg).textContent = 'No bot.env files in that folder - pick the bots/ folder of your rs-sdk checkout.'; return; }
+        let ok = 0;
+        for (const f of files) {
+          const text = await f.text();
+          try { const r = await api('/api/accounts', { body: { botEnv: text, runClient: $('#aRun', bg).checked } }); ok++; log.insertAdjacentHTML('beforeend', `<div>✓ ${esc(r.account.name)}</div>`); }
+          catch (err) { log.insertAdjacentHTML('beforeend', `<div class="sys">✗ ${esc(f.webkitRelativePath || f.name)}: ${esc(err.message)}</div>`); if (/limit/.test(err.message)) break; }
+          log.scrollTop = log.scrollHeight;
+        }
+        toast(`Added ${ok} of ${files.length} accounts`);
+        return;
+      }
       const payload = m === 'env' ? { botEnv: $('#aEnv', bg).value, runClient: $('#aRun', bg).checked }
         : { name: $('#aName', bg).value.trim(), password: $('#aPw', bg).value, server: $('#aServer', bg).value.trim(), runClient: $('#aRun', bg).checked };
       try { const r = await api('/api/accounts', { body: payload }); close(); toast(`Added ${r.account.name}`); location.hash = `#/a/${r.account.id}`; }

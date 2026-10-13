@@ -114,6 +114,9 @@ export function startServer(cfg: Config) {
     }
 
     function clientsInUse(userId: number) { return fleet.forUser(userId).filter(r => r.account.runClient).length; }
+    /** Admins (the operator) are only bound by the server-wide client cap. */
+    const limitsFor = (user: User) => user.is_admin && cfg.mode === 'hosted'
+        ? { accounts: Infinity, clients: cfg.maxClientsTotal } : { accounts: cfg.maxAccountsPerUser, clients: cfg.maxClientsPerUser };
 
     async function addAccount(user: User, b: any) {
         let a: { name: string; password: string; server: string } | null = null;
@@ -123,9 +126,10 @@ export function startServer(cfg: Config) {
         if (!NAME_RE.test(a.name)) return bad('username: 1-12 letters, digits, spaces, - or _');
         if (!a.server || /[\s/]/.test(a.server.replace(/^wss?:\/\//, '').replace(/\/gateway$/, ''))) return bad('server: a host name like rs-sdk-demo.fly.dev');
         const exists = store.findAccount(user.id, a.name);
-        if (!exists && store.countAccounts(user.id) >= cfg.maxAccountsPerUser) return bad(`account limit reached (${cfg.maxAccountsPerUser})`, 403);
-        const runClient = !!b.runClient;
-        if (runClient && !exists?.runClient && clientsInUse(user.id) >= cfg.maxClientsPerUser) return bad(`game client limit reached (${cfg.maxClientsPerUser} per user)`, 403);
+        const lim = limitsFor(user);
+        if (!exists && store.countAccounts(user.id) >= lim.accounts) return bad(`account limit reached (${lim.accounts})`, 403);
+        const runClient = b.runClient == null ? !!exists?.runClient : !!b.runClient;
+        if (runClient && !exists?.runClient && clientsInUse(user.id) >= lim.clients) return bad(`game client limit reached (${lim.clients} per user)`, 403);
         const id = store.upsertAccount(user.id, { ...a, runClient, source: 'ui' });
         await fleet.refresh(id);
         pushList(user.id);
@@ -149,7 +153,7 @@ export function startServer(cfg: Config) {
                 mode: cfg.mode, version: VERSION, user: user && user !== localUser ? { id: user.id, email: user.email, admin: !!user.is_admin } : user ? { id: user.id, email: null, admin: true } : null,
                 needsLogin: !user, passwordLogin: cfg.mode === 'local' && !!cfg.localPassword, signups: cfg.mode === 'hosted' && cfg.signups,
                 defaultServer: cfg.defaultServer, publicUrl: cfg.publicUrl || url.origin, rsSdk: !!cfg.rsSdkDir,
-                limits: { accounts: cfg.maxAccountsPerUser, clients: cfg.maxClientsPerUser },
+                limits: user ? (({ accounts, clients }) => ({ accounts: Number.isFinite(accounts) ? accounts : null, clients }))(limitsFor(user)) : { accounts: cfg.maxAccountsPerUser, clients: cfg.maxClientsPerUser },
             });
         }
         if (path === '/api/auth/signup' && method === 'POST') {
@@ -160,7 +164,8 @@ export function startServer(cfg: Config) {
             if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 200) return bad('enter a valid email address');
             if (password.length < 8) return bad('password: at least 8 characters');
             if (store.getUserByEmail(email)) return bad('an account with that email exists - log in instead', 409);
-            const user = await store.createUser(email, password, store.userCount() === 0 || email.toLowerCase() === (process.env.RSD_ADMIN_EMAIL ?? '').toLowerCase());
+            const adminEmail = (process.env.RSD_ADMIN_EMAIL ?? '').toLowerCase();
+            const user = await store.createUser(email, password, adminEmail ? email.toLowerCase() === adminEmail : store.userCount() === 0);
             log(`signup: user ${user.id}`);
             return json({ ok: true }, 200, { 'set-cookie': sessionCookie(req, store.createSession(user.id), 30 * 86400) });
         }
@@ -234,7 +239,7 @@ export function startServer(cfg: Config) {
             if (!sub && method === 'GET') return json(rt.view());
             if (!sub && method === 'PATCH') {
                 const b = await body(req);
-                if (b.runClient === true && !rt.account.runClient && clientsInUse(user.id) >= cfg.maxClientsPerUser) return bad(`game client limit reached (${cfg.maxClientsPerUser} per user)`, 403);
+                if (b.runClient === true && !rt.account.runClient && clientsInUse(user.id) >= limitsFor(user).clients) return bad(`game client limit reached (${limitsFor(user).clients} per user)`, 403);
                 if (b.server != null && !String(b.server).trim()) return bad('server cannot be empty');
                 store.updateAccount(rt.id, { password: b.password ? String(b.password) : undefined, server: b.server ? String(b.server).trim() : undefined, runClient: typeof b.runClient === 'boolean' ? b.runClient : undefined });
                 await fleet.refresh(rt.id);
@@ -277,6 +282,11 @@ export function startServer(cfg: Config) {
         return bad('not found', 404);
     }
 
+    const viewerFps = (f: unknown) => Math.min(cfg.streamFps, Math.max(1, Number(f) || cfg.streamFps));
+
+    /** `curl -fsSL <dashboard>/connect.sh | RSD_TOKEN=... bash` inside an rs-sdk checkout uploads every bots/*\/bot.env. */
+    const connectScript = (origin: string) => readFileSync(join(PUBLIC_DIR, 'connect.sh'), 'utf8').replaceAll('__DASH__', origin);
+
     // ------------------------------------------------------------ static files
     function serveStatic(path: string): Response {
         if (path === '/' || !path.includes('.')) path = '/index.html'; // SPA routes
@@ -296,6 +306,7 @@ export function startServer(cfg: Config) {
                 if (!user) return new Response('not logged in', { status: 401 });
                 return srv.upgrade(req, { data: { user, watching: null, viewer: null } }) ? undefined : new Response('upgrade failed', { status: 400 });
             }
+            if (url.pathname === '/connect.sh') return new Response(connectScript(cfg.publicUrl || url.origin), { headers: { 'content-type': 'text/x-shellscript; charset=utf-8' } });
             if (url.pathname.startsWith('/api/')) {
                 try { return await api(req, url, srv); }
                 catch (e) { log(`api error ${req.method} ${url.pathname}: ${(e as Error).stack ?? e}`); return bad('internal error', 500); }
@@ -318,11 +329,13 @@ export function startServer(cfg: Config) {
                     const rt = msg.id != null ? fleet.get(Number(msg.id)) : null;
                     if (rt && rt.account.user_id === ws.data.user.id) {
                         ws.data.watching = rt.id;
-                        ws.data.viewer = { send: d => { ws.send(d); }, buffered: () => ws.getBufferedAmount() };
+                        ws.data.viewer = { send: d => { ws.send(d); }, buffered: () => ws.getBufferedAmount(), maxFps: viewerFps(msg.fps), lastSentAt: 0 };
                         rt.addViewer(ws.data.viewer);
                         ws.send(JSON.stringify({ t: 'view', view: rt.view() }));
                         void rt.poll();
                     }
+                } else if (msg.t === 'fps' && ws.data.viewer) {
+                    ws.data.viewer.maxFps = viewerFps(msg.fps);
                 } else if (msg.t === 'input' && ws.data.watching != null) {
                     const rt = fleet.get(ws.data.watching);
                     if (!rt) return;

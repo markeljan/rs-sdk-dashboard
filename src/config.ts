@@ -37,7 +37,7 @@ export function loadConfig(over: Record<string, string | undefined> = {}) {
         maxClientsTotal: num(e.RSD_MAX_CLIENTS, mode === 'hosted' ? 14 : 1000),
         /** Live view frame rate while someone watches, and JPEG quality 1-100. */
         streamFps: num(e.RSD_FPS, mode === 'hosted' ? 12 : 20),
-        streamQuality: num(e.RSD_QUALITY, 75),
+        streamQuality: num(e.RSD_QUALITY, mode === 'hosted' ? 65 : 75),
         /** Render rate of game clients nobody is watching (game logic is unaffected). */
         idleFps: num(e.RSD_IDLE_FPS, 5),
         chromePath: e.CHROME_PATH || e.PUPPETEER_EXECUTABLE_PATH || '',

@@ -51,7 +51,8 @@ export function xpRate(samples: { at: number; total_xp: number }[], now = Date.n
     return Math.round((b.total_xp - a.total_xp) / span * 3_600_000);
 }
 
-export type Viewer = { send: (data: string | Buffer) => void; buffered: () => number };
+/** maxFps: the viewer's own cap (data saver on phones); frames in between are skipped for that viewer only. */
+export type Viewer = { send: (data: string | Buffer) => void; buffered: () => number; maxFps: number; lastSentAt: number };
 
 export class AccountRuntime {
     account: Account;
@@ -77,7 +78,7 @@ export class AccountRuntime {
     }
 
     get id() { return this.account.id; }
-    online() { return !!this.summary?.inGame && this.stateAge != null && Date.now() - this.stateAt < 60_000 && this.stateAge < 30_000; }
+    online() { return !!this.summary?.inGame && this.botStatus !== 'dead' && this.stateAge != null && Date.now() - this.stateAt < 60_000 && this.stateAge < 30_000; }
 
     pollDue(now: number) {
         const every = this.viewers.size > 0 ? 2500 : this.cfg.idlePollSec * 1000;
@@ -137,7 +138,12 @@ export class AccountRuntime {
         const head = Buffer.alloc(8);
         head.writeUInt32BE(this.id, 0); head.writeUInt16BE(w, 4); head.writeUInt16BE(h, 6);
         const msg = Buffer.concat([head, jpeg]);
-        for (const v of this.viewers) if (v.buffered() < 1_500_000) v.send(msg); // slow viewers skip frames
+        const now = Date.now();
+        for (const v of this.viewers) {
+            if (v.buffered() > 1_500_000 || now - v.lastSentAt < 1000 / v.maxFps - 15) continue; // slow or capped viewers skip frames
+            v.lastSentAt = now;
+            v.send(msg);
+        }
     }
 
     view() {

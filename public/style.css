@@ -129,3 +129,5 @@ svg.spark { width: 100%; height: 48px; display: block; }
 #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #2d2419; border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; z-index: 60; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100% - 32px); }
 #toast.show { opacity: 1; }
 footer.foot { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 12px 32px; }
+.dot.err { min-height: 0; font-size: 0; }
+@media (max-width: 600px) { .hide-sm { display: none; } header.top { padding: 8px 10px; gap: 8px; } main { padding: 10px; } }

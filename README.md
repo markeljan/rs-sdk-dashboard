@@ -22,7 +22,10 @@ The dashboard only talks to the rs-sdk **gateway** (the same server your bots us
 ## Quick start: hosted
 
 1. Open https://dash.soko.tools and create an account.
-2. **＋ Add account**: enter your bot's username and password (from `bots/<name>/bot.env`), or paste the whole `bot.env`.
+2. **＋ Add account**: enter your bot's username and password (from `bots/<name>/bot.env`), or paste the whole `bot.env`. To add many bots at once, use **Import many** and pick your rs-sdk `bots` folder. You can also create a token (⚙ Settings → API tokens) and run this from your rs-sdk checkout:
+   ```bash
+   curl -fsSL https://dash.soko.tools/connect.sh | RSD_TOKEN=rsd_... bash      # RUN_CLIENT=1 to also host the clients
+   ```
 3. Optional: tick **Run the game client on this dashboard**. Close your own game tab for that account first, because only one client can be logged in per account. From then on the client runs on our servers 24/7.
 4. On your phone, open the same URL and choose **Add to Home Screen**.
 
