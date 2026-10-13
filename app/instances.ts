@@ -8,7 +8,7 @@
 // rs-sdk accounts (local mode, RS_SDK_DIR) point at the real bots/<name> dir instead, so logs, plan, tasks and
 // pause/resume work exactly like in the rs-sdk fleet.
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Config } from './config';
 import type { Account, Store } from './db';
@@ -75,8 +75,35 @@ export class Instances {
         return (await inst.ready) ? inst.port : null;
     }
 
+    /** Headless Chromes on this user's profiles that the dashboard no longer tracks (a restart raced a launch): they
+     *  hold the profile lock, so the next launch would exit with code 21. Kill them before starting the dashboard. */
+    private reapOrphanChromes(telemetry: string) {
+        const dir = join(telemetry, 'managed-chrome');
+        if (!existsSync(dir)) return;
+        const tracked = new Set<number>();
+        for (const f of readdirSync(dir)) {
+            if (!f.endsWith('.json')) continue;
+            try { tracked.add(Number(JSON.parse(readFileSync(join(dir, f), 'utf8')).pid)); } catch { /* unreadable */ }
+        }
+        const ps = Bun.spawnSync(['ps', '-axo', 'pid=,ppid=,command=']).stdout.toString().split('\n');
+        const main = ps.map(l => /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(l)).filter((m): m is RegExpExecArray => !!m)
+            .filter(m => m[3]!.includes(`--user-data-dir=${dir}/profile-`) && !m[3]!.includes('--type='));
+        for (const m of main) {
+            const pid = Number(m[1]);
+            if (tracked.has(pid)) continue;
+            try { process.kill(pid, 'SIGKILL'); this.log(`[user ${telemetry.split('/').at(-2)}] killed orphaned game-client Chrome ${pid}`); } catch { /* gone */ }
+        }
+        for (const f of readdirSync(dir)) if (f.startsWith('profile-')) for (const lock of ['SingletonLock', 'SingletonSocket', 'SingletonCookie']) {
+            const p = join(dir, f, lock);
+            const name = f.slice('profile-'.length);
+            let pid = 0; try { pid = Number(JSON.parse(readFileSync(join(dir, `${name}.json`), 'utf8')).pid); } catch { /* none */ }
+            if (!pid || !main.some(m => Number(m[1]) === pid)) rmSync(p, { force: true });
+        }
+    }
+
     private spawn(inst: Instance) {
         const telemetry = join(this.userDir(inst.userId), 'telemetry');
+        this.reapOrphanChromes(telemetry);
         const env: Record<string, string> = {
             ...process.env as Record<string, string>, ...this.cfg.passEnv,
             PORT: String(inst.port), HOST: '127.0.0.1', DATA_DIR: telemetry, ACCOUNTS_FILE: join(telemetry, 'accounts.json'),
@@ -124,6 +151,7 @@ export class Instances {
         const accounts = this.store.listAccounts(userId);
         if (!inst) { if (accounts.some(a => a.runClient)) await this.ensure(userId); return; }
         const run = async () => {
+            const accounts = this.store.listAccounts(userId); // latest, so a burst of changes is one restart
             if (!accounts.length) { await this.stopProc(inst); this.map.delete(userId); return; }
             const sig = this.writeConfig(userId, accounts);
             if (sig === inst.sig && inst.proc) return;
@@ -132,7 +160,7 @@ export class Instances {
             this.spawn(inst);
             await inst.ready;
         };
-        const prev = inst.restarting ?? Promise.resolve();
+        const prev = (inst.restarting ?? Promise.resolve()).then(() => sleep(2000)); // let a burst of changes land first
         inst.restarting = prev.then(run, run).finally(() => { if (inst.restarting === p) inst.restarting = null; });
         const p = inst.restarting;
         await p;
