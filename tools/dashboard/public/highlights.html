@@ -22,10 +22,10 @@ header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; paddi
 header h1 { margin: 0; font-size: 20px; letter-spacing: .01em; }
 header h1 span { color: var(--gold); }
 header .sp { flex: 1; }
-main { max-width: 1200px; margin: 0 auto; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+main { max-width: 1200px; margin: 0 auto; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); align-items: start; }
+.card { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
 .card.wide { grid-column: 1 / -1; }
-.card h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.card h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .tiles { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .tile { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
 .tile .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -53,7 +53,7 @@ ul.ms { margin: 0; padding-left: 18px; } ul.ms li { margin: 4px 0; }
 .live .ev:hover { background: var(--card2); }
 .live .ev.new { animation: flash 2.4s ease-out; }
 .live .ic { flex: none; width: 22px; text-align: center; font-size: 16px; }
-.live .tx { flex: 1; min-width: 0; }
+.live .tx { overflow-wrap: anywhere; flex: 1; min-width: 0; }
 .live .ago { flex: none; color: var(--faint); font-size: 12px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); margin-right: 6px; box-shadow: 0 0 0 0 #6fcf8a88; animation: pulse 2s infinite; vertical-align: 1px; }
 @keyframes flash { from { background: #3a2c14; } to { background: transparent; } }

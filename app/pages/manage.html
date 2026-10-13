@@ -53,9 +53,13 @@ main { max-width: 860px; margin: 0 auto; padding: 14px; display: grid; gap: 12px
 .auth { max-width: 380px; margin: 10vh auto 0; padding: 0 14px; display: grid; gap: 12px; }
 .auth .brand { display: flex; gap: 10px; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
 .auth .brand img { width: 36px; height: 36px; border-radius: 8px; }
-.acct { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.acct { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 .acct:first-of-type { border-top: 0; }
-.acct .nm { font-weight: 700; }
+.acct .nm { font-weight: 700; overflow-wrap: anywhere; }
+.top { flex-wrap: wrap; }
+.top .brand { min-width: 0; }
+.hint, .card p, .hero p { overflow-wrap: anywhere; }
+@media (max-width: 540px) { .acct { grid-template-columns: minmax(0, 1fr); } .acct > .row { gap: 6px; } .card { padding: 12px; } }
 .tag { font-size: 11px; border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; color: var(--muted); margin-left: 6px; font-weight: 500; }
 .tag.managed { color: var(--gold); border-color: #6a5326; }
 .ord { display: inline-flex; gap: 2px; }

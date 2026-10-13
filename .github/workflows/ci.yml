@@ -8,4 +8,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
         env: { PUPPETEER_SKIP_DOWNLOAD: '1' }
+      - run: bunx puppeteer browsers install chrome --install-deps
       - run: bun run check
+      - run: bun test tools/dashboard

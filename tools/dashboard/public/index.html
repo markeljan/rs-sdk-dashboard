@@ -42,11 +42,11 @@ button { cursor: pointer; }
 .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
 .brand { font-weight: 700; letter-spacing: .02em; margin-right: 4px; }
 /* account switcher: one pill per account; everything below follows the selected one */
-.acctbar { position: sticky; top: 0; z-index: 6; display: flex; gap: 8px; overflow-x: auto; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; background: var(--bg); border-bottom: 1px solid var(--line); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.acctbar { flex: none; min-width: 0; width: 100%; align-items: stretch; position: sticky; top: 0; z-index: 6; display: flex; gap: 8px; overflow-x: auto; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; background: var(--bg); border-bottom: 1px solid var(--line); scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .acctbar::-webkit-scrollbar { display: none; }
-.acct { flex: 0 0 210px; width: 210px; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 7px 11px; color: var(--ink); touch-action: manipulation; }
+.acct { min-height: 62px; overflow: hidden; flex: 0 0 210px; width: 210px; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 7px 11px; color: var(--ink); touch-action: manipulation; }
 .acct.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; background: var(--card2); }
-.acct .an { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.acct .an { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; font-weight: 700; }
 .acct .an::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
 .acct.live .an::before { background: var(--good); } .acct.stale .an::before { background: var(--warn); }
 .acct .ast { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .acct .ast b { color: var(--ink); font-weight: 600; }
@@ -144,7 +144,10 @@ main.tabs { padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); }
 body.mobile:not(.fs) .stage { margin: -12px -12px 0; border-radius: 0; border-width: 0; }
 body.mobile:not(.fs) .stage.noinput { box-shadow: inset 0 0 0 2px #ff6a5a3d; }
 /* phones never get a landscape page layout: rotating enters fullscreen; if fullscreen is exited in landscape, stay a column */
-@media (orientation: landscape) { body.mobile:not(.fs) main.tabs, body.mobile:not(.fs) .acctbar { max-width: 520px; margin-left: auto; margin-right: auto; } } /* input disabled: faint red border; input on (default) shows nothing */
+@media (orientation: landscape) and (min-width: 600px) {
+  body.mobile:not(.fs) .livegrid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); align-items: start; }
+  body.mobile:not(.fs) .stage { margin: 0; border-radius: var(--radius); }
+} /* input disabled: faint red border; input on (default) shows nothing */
 body.fs .stage.noinput::after { content: ''; position: fixed; inset: 0; border: 2px solid #ff6a5a3d; pointer-events: none; z-index: 8; }
 .stage canvas { display: block; width: 100%; height: auto; aspect-ratio: 765 / 503; object-fit: contain; touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .placeholder { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: var(--muted); font-size: 13px; pointer-events: none; }
@@ -186,10 +189,26 @@ body.hq .ctlicons #btnPause2 { display: none; }
 body.mobile:not(.fs) { height: 100dvh; overflow: hidden; overscroll-behavior: none; display: flex; flex-direction: column; }
 body.mobile:not(.fs) main.tabs { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 body.mobile:not(.fs) #tabLive, body.mobile:not(.fs) .livegrid { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-body.mobile:not(.fs) .live-main { position: static; flex: none; }
-body.mobile:not(.fs) .live-side { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: auto; overscroll-behavior: contain; }
-body.mobile:not(.fs) #cardActivity { flex: 1 1 auto; min-height: 120px; display: flex; flex-direction: column; }
-body.mobile:not(.fs) #cardActivity pre.log { flex: 1 1 auto; min-height: 0; max-height: none; }
+body.mobile:not(.fs) .live-main { position: static; flex: none; width: 100%; }
+body.mobile:not(.fs) .live-side { width: 100%; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: auto; overscroll-behavior: contain; }
+body.mobile:not(.fs) #cardActivity { flex: 1 0 160px; min-height: 160px; display: flex; flex-direction: column; }
+body.mobile:not(.fs) #cardActivity > pre.log { flex: 1 1 auto; min-height: 48px; max-height: none; }
+body.mobile:not(.fs) .acct { flex-basis: 172px; width: 172px; min-height: 56px; padding: 6px 9px; border-radius: 9px; }
+body.mobile:not(.fs) .acct .aa, body.mobile:not(.fs) .acct .tags, body.mobile:not(.fs) .acct .ls { display: none; }
+body.mobile:not(.fs) .acct.litetog { flex-basis: auto; width: auto; }
+body.mobile:not(.fs) .acctbar { gap: 6px; padding-left: 8px; padding-right: 8px; }
+body.mobile:not(.fs) .pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 44px); gap: 4px; }
+body.mobile:not(.fs) .controls { margin-top: 8px; }
+body.mobile:not(.fs) #cardHqList { flex: none; display: flex; max-height: min(360px, 48dvh); }
+body.mobile:not(.fs) #cardHqList .hqrows { min-height: 0; overflow: auto; }
+body.mobile:not(.fs) #cardHqGlance { flex: none; }
+body.mobile:not(.fs) .livegrid { gap: 8px; }
+/* Short browser windows and landscape need a scroll fallback so the game and controls stay reachable. */
+@media (max-height: 600px), (orientation: landscape) {
+  body.mobile:not(.fs) { overflow-y: auto; height: auto; min-height: 100dvh; }
+  body.mobile:not(.fs) .live-side { overflow: visible; flex: none; }
+  body.mobile:not(.fs) #cardActivity { flex: none; height: 220px; }
+}
 @media (display-mode: standalone) { html, body { overscroll-behavior: none; } }
 /* controls: camera pad + cursor mode (phones); the rest float on the game frame (.stagectl) or live in the ⚙ sheet */
 .controls { display: grid; gap: 10px; margin-top: 10px; }
@@ -223,6 +242,11 @@ body.mobile .sheet { width: 100vw; border-left: 0; }
 .segrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; border-top: 1px solid var(--line); font-size: 15px; }
 .seg { display: flex; gap: 2px; padding: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
 .seg .btn { min-height: 34px; padding: 4px 9px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; white-space: nowrap; }
+@media (max-width: 480px) {
+  .segrow { flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 0; }
+  .seg .btn { flex: 1; min-width: 0; padding: 4px 6px; font-size: 12px; }
+  .srow > span { min-width: 0; overflow-wrap: anywhere; }
+}
 .seg .btn.on { background: var(--card2); box-shadow: 0 0 0 1px var(--gold) inset; color: var(--ink); }
 .grpbtns { padding: 10px 0 6px; border-top: 1px solid var(--line); }
 #fsRow .btn { flex: 1; }
@@ -267,7 +291,18 @@ body.mobile .sheet { width: 100vw; border-left: 0; }
 .good { color: var(--good); } .bad { color: var(--bad); } .warn { color: var(--warn); }
 
 /* activity */
-.cur { color: var(--gold); font-weight: 600; }
+.cur { color: var(--gold); font-weight: 600; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex: none; }
+#cardActivity h2 { flex: none; flex-wrap: wrap; margin-bottom: 6px; font-size: 11px; }
+#logName { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; letter-spacing: .02em; }
+#goal { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; overflow-wrap: anywhere; flex: none; }
+.activity-details { flex: none; min-width: 0; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.activity-details summary { cursor: pointer; width: fit-content; padding: 4px 0; }
+.activity-details pre.log { max-height: 140px; margin-top: 4px; }
+#cardActivity { overflow: hidden; }
+#cardActivity > pre.log { min-height: 48px; }
+body.mobile:not(.fs) #cardActivity { padding: 10px 12px; }
+body.mobile:not(.fs) #cardActivity:has(.activity-details[open]) { flex-basis: 300px; min-height: 300px; }
+body.desk #cardActivity .activity-details pre.log { flex: none; max-height: 180px; }
 pre.log { margin: 8px 0 0; padding: 8px 10px; background: #0a0b0c; border: 1px solid var(--line); border-radius: 8px; font: 11px/1.45 ui-monospace, Menlo, monospace; color: #b9c0b5; white-space: pre-wrap; word-break: break-word; max-height: 46vh; overflow: auto; overscroll-behavior: contain; }
 .stats3 { row-gap: 8px; }
 .glbars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
@@ -279,14 +314,16 @@ a { color: var(--blue); }
 /* fullscreen: native Fullscreen API where available, CSS pseudo-fullscreen elsewhere (iPhone Safari) */
 .fsbar { display: none; }
 body.fs { overflow: hidden; }
+/* A sticky tablet column creates a stacking context that can cover fullscreen controls. */
+body.fs .live-main { position: static; }
 body.fs .stage { position: fixed; inset: 0; z-index: 100; border: 0; border-radius: 0; width: 100vw; height: 100vh; height: 100dvh; box-shadow: none; }
-.stage:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; }
+.stage:fullscreen { width: 100vw; height: 100vh; height: 100dvh; border: 0; border-radius: 0; }
 /* beta fullscreen: the frame is split into absolutely placed panel canvases (positions set by layoutBeta) */
 .region { position: absolute; display: block; touch-action: none; background: #000; -webkit-touch-callout: none; }
 .region[hidden] { display: none; }
 body.fs .stage.beta { display: block; }
-/* landscape beta uses the whole screen: no safe-area padding at the sides or bottom */
-body.fs .stage.beta.landscape { padding: 0; }
+/* Landscape keeps controls clear of display cutouts and the home indicator. */
+body.fs .stage.beta.landscape { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 /* landscape beta: only ⚙ and the camera arrows float over the 3D view, semi-transparent */
 .stage.beta.landscape #fsCursor, .stage.beta.landscape #fsPause, .stage.beta.landscape #fsExit { display: none; }
 .stage.beta #fsCursor { display: none; }
@@ -496,7 +533,11 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
       <h2>Current activity <span class="small muted" id="logName"></span></h2>
       <div class="cur" id="curTask">—</div>
       <div class="small muted" id="goal" style="margin-top:4px"></div>
-      <pre class="log" id="logLines"></pre>
+      <details class="activity-details" id="activityDetails" hidden>
+        <summary>Full activity</summary>
+        <pre class="log" id="activityFull"></pre>
+      </details>
+      <pre class="log" id="logLines" aria-label="Activity log"></pre>
     </div>
     <div class="card" id="cardGlance">
       <h2><span>Overview <a class="hlink" href="/highlights" title="Best drops, achievements, top earners and methods">★ Highlights</a></span> <span class="small num" id="glFresh"></span></h2>
@@ -1114,24 +1155,26 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
       Object.assign(chatOv.style, { left: pl + ovLeft + 'px', bottom: (st.clientHeight - (pt + gb.y + gb.h)) + 12 + 'px', width: ovW + 'px' });
     }
     const wasHidden = fsAcct.hidden;
-    const wholeRows = (px) => Math.max(1, Math.floor(px / FS_ROW)) * FS_ROW; // never a partial pill at the bottom
+    const wholeRows = (px) => Math.max(0, Math.floor(px / FS_ROW)) * FS_ROW; // never a partial pill at the bottom
     const showAccts = accountList.length >= 2 && betaAccts;
     fsAcct.classList.add('vertical');
     fsAcctBtn.hidden = !showAccts || !!ctl;
     fsAcct.hidden = !showAccts || (!ctl && !fsAcctOpen);
-    if (wasHidden !== fsAcct.hidden) fsPillShown = null; // re-centre the selected pill when the list (re)appears
     if (ctl) { // portrait: just above the arrow pad, full column width
       const top = ctl.y + 44, bottom = ctl.y + ctl.h - padH - 12; // below ⚙, above the arrows; stacked + vertical scroll
+      fsAcct.hidden = !showAccts || bottom - top < FS_ROW;
       Object.assign(fsAcct.style, { left: pl + ctl.x + 4 + 'px', top: pt + top + 'px', width: ctl.w - 8 + 'px', maxHeight: '', height: wholeRows(bottom - top) + 'px' });
     } else { // landscape: down the left edge - below the game's hover text ("Walk here"), well clear of the arrow pad
       const gb = boxes.game, w = Math.min(130, Math.max(100, gb.w * 0.17));
       const x = gb.x + 6, btnTop = gb.y + 36, listTop = btnTop + 30 + 6;
       const padTop = gb.y + gb.h - padH - 18; // the arrow pad's hit box (see fpad above)
-      const listBottom = padTop - 28;
+      const listBottom = padTop - 8;
+      fsAcct.hidden = !showAccts || !fsAcctOpen || listBottom - listTop < FS_ROW;
       Object.assign(fsAcctBtn.style, { left: pl + x + 'px', top: pt + btnTop + 'px', maxWidth: w + 'px' });
       Object.assign(fsAcct.style, { left: pl + x + 'px', top: pt + listTop + 'px', width: w + 'px', height: '', maxHeight: wholeRows(listBottom - listTop) + 'px' }); // shrinks to its pills
       renderFsAcctBtn();
     }
+    if (wasHidden !== fsAcct.hidden) fsPillShown = null; // re-centre after the final visibility decision
     renderFsAccounts();
     chatIn.hidden = !inBox || dialogOpen;
     if (inBox) Object.assign(chatIn.style, { left: pl + inBox.x + 'px', top: pt + inBox.bottom - inH + 'px', width: inBox.w + 'px', height: inH + 'px' });
@@ -1225,6 +1268,7 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
   }
   new ResizeObserver(() => layoutBeta()).observe($('stage'));
   window.addEventListener('orientationchange', () => setTimeout(layoutBeta, 250));
+  window.visualViewport?.addEventListener('resize', layoutBeta);
   $('setAccts').addEventListener('click', () => { betaAccts = !betaAccts; try { localStorage.setItem('dash.betaAccts', betaAccts ? '1' : '0'); } catch {} renderSettings(); layoutBeta(); });
   $('setChat').addEventListener('click', () => { betaChat = !betaChat; try { localStorage.setItem('dash.betaChat', betaChat ? '1' : '0'); } catch {} renderSettings(); layoutBeta(); });
   function renderSettings() {
@@ -1583,7 +1627,7 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
     const el = $('stage');
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req) {
-      try { await req.call(el, { navigationUI: 'hide' }); fsNative = true; try { await screen.orientation.lock('landscape'); } catch {} } catch { fsNative = false; }
+      try { await req.call(el, { navigationUI: 'hide' }); fsNative = true; } catch { fsNative = false; }
     }
     // iPhone Safari has no element fullscreen: CSS pseudo-fullscreen; a home-screen web app hides the browser bars.
     if (!fsNative && /iPhone|iPod/.test(navigator.userAgent) && !navigator.standalone) toast('Tip: Share → Add to Home Screen for true fullscreen · rotate for landscape', 4500);
@@ -1732,8 +1776,14 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
 
     // activity
     const a = s.activity;
-    $('curTask').textContent = a.current || ''; $('curTask').hidden = !a.current;
-    $('goal').textContent = a.goal || '';
+    // Status lines often contain dozens of pipe-separated counters. Keep the headline to the action;
+    // preserve the exact status and goal in the disclosure, and the original log below it.
+    const current = a.current || '', headline = current.split(/\s*\|\s*/)[0];
+    $('curTask').textContent = headline; $('curTask').hidden = !current;
+    $('curTask').title = current;
+    $('goal').textContent = a.goal || ''; $('goal').hidden = !a.goal;
+    $('activityDetails').hidden = !current.includes('|') && current.length < 60 && (a.goal || '').length < 40;
+    $('activityFull').textContent = [current, a.goal].filter(Boolean).join('\n\n');
     $('logName').textContent = a.log ? `${a.log.file} · ${fmtAge(s.now - a.log.mtime)}` : '';
     { // newest lines are at the bottom: keep following them unless the user scrolled up to read
       const pre = $('logLines'), follow = pre.scrollHeight - pre.scrollTop - pre.clientHeight < 40;

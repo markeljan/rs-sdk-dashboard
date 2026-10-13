@@ -19,19 +19,20 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5
 body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 a { color: var(--gold); }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 0 18px; }
-header.top { display: flex; align-items: center; gap: 10px; padding: 14px 0; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--ink); text-decoration: none; }
+header.top { flex-wrap: wrap; display: flex; align-items: center; gap: 10px; padding: 14px 0; }
+.brand { min-width: 0; overflow-wrap: anywhere; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--ink); text-decoration: none; }
 .brand img { width: 30px; height: 30px; border-radius: 7px; }
 .grow { flex: 1; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; min-height: 44px; color: var(--ink); text-decoration: none; font: inherit; cursor: pointer; }
 .btn.primary { background: #3a2f1c; border-color: #8a6a35; color: #f6dfb7; font-weight: 600; }
 .btn.sm { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.hero > * { min-width: 0; }
 .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; align-items: center; padding: 28px 0 10px; }
 .hero h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 12px; letter-spacing: -.01em; }
 .hero p { color: var(--muted); font-size: 17px; margin: 0 0 18px; }
 .hero .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .shots { position: relative; min-height: 300px; }
-.shots .desk { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+.shots .desk { max-width: 100%; width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
 .shots .phone { position: absolute; right: -6px; bottom: -26px; width: 30%; border-radius: 14px; border: 2px solid #33393f; box-shadow: 0 10px 30px #0009; }
 .feats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 46px 0 8px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
