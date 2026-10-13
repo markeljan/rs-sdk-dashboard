@@ -29,8 +29,8 @@ const lastJson = (f: string): any => {
 };
 const isLegacy = (a: string) => /slave/i.test(a); // retired account names (memory: banned), not shown
 
-export function buildHighlights(root: string, earners: EarnerRow[] = []) {
-    const T = join(root, 'telemetry');
+export function buildHighlights(root: string, earners: EarnerRow[] = [], telemetryDir = join(root, 'telemetry')) {
+    const T = telemetryDir;
     const files = existsSync(T) ? readdirSync(T) : [];
 
     // ---- drops: per-account loot logs, KBD logs, alt logs, Brimhaven megarare log (deduped across them)

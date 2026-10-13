@@ -42,6 +42,13 @@ curl -X POST ${origin}/_rsd/api/accounts -H "Authorization: Bearer $RSD_TOKEN" -
 
 New bots: create them as usual (\`bun bots/create-bot.ts <name>\`), then add them the same way.
 
+Then start the connector and leave it running (e.g. in a terminal tab, or as a login item). It shows each bot's log,
+running script, gold and drops on the dashboard, and applies the dashboard's Pause button to the bots:
+
+\`\`\`bash
+curl -fsSL ${origin}/connector.ts -o .rsd-connector.ts && RSD_TOKEN=${token} bun .rsd-connector.ts
+\`\`\`
+
 ## Game clients: exactly one per account
 
 - \`runClient: true\` = the dashboard keeps a game client logged in for that account. Do **not** also open a browser

@@ -19,5 +19,7 @@ COPY SYNCED_FROM ./
 VOLUME /data
 EXPOSE 4747
 HEALTHCHECK --interval=30s --timeout=5s CMD bun -e "fetch('http://127.0.0.1:4747/_rsd/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["bun", "app/cli.ts", "start"]
+# The front server runs in a loop, so infra/aws/hot-deploy.sh can restart it without stopping the container: game-client
+# Chromes (detached) keep running and the restarted dashboards reattach to them. -g: docker stop reaches every process.
+ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
+CMD ["sh", "-c", "while :; do bun app/cli.ts start; echo 'front server exited - restarting in 1 s'; sleep 1; done"]

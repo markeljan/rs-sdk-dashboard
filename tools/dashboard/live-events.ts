@@ -42,7 +42,8 @@ export class LiveEvents {
     private seq = 0;
     private timer: ReturnType<typeof setInterval> | null = null;
 
-    constructor(root: string) { this.dir = join(root, 'telemetry'); }
+    /** dir: the telemetry dir (the dashboard's DATA_DIR; defaults to <root>/telemetry). */
+    constructor(root: string, dir = join(root, 'telemetry')) { this.dir = dir; }
 
     start(everyMs = 4000) {
         this.scan(true);

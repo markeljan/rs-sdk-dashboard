@@ -71,14 +71,14 @@ body.hq #tabLive .live-side > .card:not(.hqcard) { display: none !important; }
 body.hq #btnPause, body.hq #fsPause, body.hq #btnCursor, body.hq #fsCursor { display: none !important; }
 .stage.lite canvas { touch-action: none; } /* drags pan the map and scroll the account list; pinch zooms */
 body:not(.hq):not(.liteacct) #cardHqList { display: none !important; }
-body.liteacct #cardHqList { display: flex !important; }
+/* (the HQ account list used to show beside lite accounts too; Bot HQ is one tap away instead) */
 #cardHqList { flex-direction: column; }
 #cardHqList h2 .btn { min-height: 0; padding: 3px 10px; font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--ink); }
 body.hq #hqBack { display: none; }
 .hqrow.on { background: #2a2310; box-shadow: 0 0 0 1px var(--gold) inset; }
 .acct.hqpill.parent { border-color: #2d5a3a; box-shadow: 0 0 0 1px #2d5a3a inset; }
 body.desk.liteacct #cardHqList { flex: 1 1 0; min-height: 200px; }
-body.desk.liteacct #cardActivity { flex: 0 0 auto; min-height: 0; }
+/* lite accounts: the activity card fills the side column (the account list beside it was removed) */
 body.desk.liteacct #logLines { flex: none; max-height: 64px; }
 body.desk.liteacct #cardGlance { max-height: 34%; }
 .hqrows { display: grid; gap: 2px; overflow: auto; }
@@ -173,6 +173,24 @@ body:not(.mobile) #btnCursor, body:not(.mobile) #fsCursor { display: none; }
 .stagectl .btn:hover { opacity: 1; background: #000000d0; }
 .stagectl .btn.pause.on { background: #7a2e1dd8; border-color: #b04a33; opacity: 1; }
 body.fs .stagectl { display: none; }
+/* phones (not fullscreen): pause / settings / fullscreen live in a row above Cursor mode, not on the frame */
+.ctlicons { display: none; gap: 6px; }
+.ctlicons .btn { flex: 1; min-height: 40px; padding: 4px; font-size: 17px; }
+.ctlicons .btn.pause.on { background: #7a2e1d; border-color: #b04a33; }
+body.mobile:not(.fs) .ctlicons { display: flex; }
+body.mobile:not(.fs) .stagectl { display: none; }
+body.hq .ctlicons #btnPause2 { display: none; }
+/* Overview card: removed for now (Current activity stays) */
+#cardGlance { display: none !important; }
+/* phones (not fullscreen): one screen, no page scrolling - the activity log takes the rest of the height and scrolls inside */
+body.mobile:not(.fs) { height: 100dvh; overflow: hidden; overscroll-behavior: none; display: flex; flex-direction: column; }
+body.mobile:not(.fs) main.tabs { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+body.mobile:not(.fs) #tabLive, body.mobile:not(.fs) .livegrid { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+body.mobile:not(.fs) .live-main { position: static; flex: none; }
+body.mobile:not(.fs) .live-side { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: auto; overscroll-behavior: contain; }
+body.mobile:not(.fs) #cardActivity { flex: 1 1 auto; min-height: 120px; display: flex; flex-direction: column; }
+body.mobile:not(.fs) #cardActivity pre.log { flex: 1 1 auto; min-height: 0; max-height: none; }
+@media (display-mode: standalone) { html, body { overscroll-behavior: none; } }
 /* controls: camera pad + cursor mode (phones); the rest float on the game frame (.stagectl) or live in the ⚙ sheet */
 .controls { display: grid; gap: 10px; margin-top: 10px; }
 .ctlbar { display: flex; gap: 10px; align-items: stretch; }
@@ -184,11 +202,30 @@ body.fs .stagectl { display: none; }
   .ctlbtns .btn { font-size: 12px; padding: 4px 6px; }
 }
 
-.sheet { width: min(560px, 100vw); max-width: 100vw; margin: auto auto 0; padding: 0; border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0; background: var(--card); color: var(--ink); }
+/* Settings: a side panel on desktop, the whole screen on phones. Grouped rows: switches, segmented pickers. */
+.sheet { width: min(400px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; padding: 0; border: 0; border-left: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--ink); }
+body.mobile .sheet { width: 100vw; border-left: 0; }
 .sheet::backdrop { background: #0009; }
-.sheet .in { display: grid; gap: 12px; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); }
-.sheet .grab { width: 40px; height: 5px; border-radius: 99px; background: var(--line); margin: 0 auto 2px; }
-.sheet h3 { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.sheet .in { display: grid; gap: 14px; align-content: start; padding: calc(10px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)); height: 100%; overflow: auto; overscroll-behavior: contain; }
+.sheet .shd { display: flex; align-items: center; justify-content: space-between; position: sticky; top: calc(-10px - env(safe-area-inset-top)); z-index: 1; margin: calc(-10px - env(safe-area-inset-top)) -14px 0; padding: calc(10px + env(safe-area-inset-top)) 14px 8px; background: var(--bg); }
+.sheet .shd h2 { margin: 0; font-size: 20px; }
+.sheet .shd .btn { min-height: 36px; padding: 6px 14px; font-weight: 600; }
+.sheet h3 { margin: 8px 0 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.sheet .grp { display: grid; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 2px 14px 6px; }
+.sheet .grp .hint { margin: 6px 0 4px; }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 52px; background: none; border: 0; border-top: 1px solid var(--line); padding: 8px 0; color: var(--ink); text-align: left; font-size: 15px; touch-action: manipulation; }
+.grp h3 + .srow, .grp h3 + .segrow { border-top: 0; }
+.srow small { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+.sw { flex: none; width: 44px; height: 26px; border-radius: 99px; background: var(--bar); position: relative; transition: background .15s; }
+.sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #d7dade; transition: left .15s; }
+.srow.on .sw { background: var(--good); }
+.srow.on .sw::after { left: 21px; }
+.segrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; border-top: 1px solid var(--line); font-size: 15px; }
+.seg { display: flex; gap: 2px; padding: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+.seg .btn { min-height: 34px; padding: 4px 9px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; white-space: nowrap; }
+.seg .btn.on { background: var(--card2); box-shadow: 0 0 0 1px var(--gold) inset; color: var(--ink); }
+.grpbtns { padding: 10px 0 6px; border-top: 1px solid var(--line); }
+#fsRow .btn { flex: 1; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .btn { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-height: 44px; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 .btn:active { filter: brightness(1.3); }
@@ -287,7 +324,6 @@ body.fs .stage.beta.landscape { padding: 0; }
 .chatin:focus { background: #d9cfa6; color: #000080; caret-color: #000080; }  /* chat-box parchment, RS input-line blue */
 .chatin.floating { background: #0000004d; color: #00ffff; caret-color: #00ffff; text-shadow: 1px 1px 0 #000; }
 .chatin.floating:focus { background: #000000a0; color: #00ffff; }
-#sheetExit { position: absolute; top: 10px; right: 12px; min-height: 36px; padding: 6px 12px; }
 .sheet .in { position: relative; }
 .stage.beta.landscape .fsside .btn { width: 40px; min-height: 36px; font-size: 17px; padding: 0; }
 .stage.beta .fsside, .stage.beta .fspad { z-index: 5; }
@@ -356,6 +392,7 @@ body.desk .controls { display: none; } /* keyboard arrows turn the camera; pause
 body.desk .stage canvas { max-height: none; }
 body.desk .live-side { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 body.desk #cardActivity { flex: 1 1 0; min-height: 180px; display: flex; flex-direction: column; }
+body.desk #cardActivity pre.log { flex: 1 1 auto; min-height: 0; max-height: none; }
 body.desk #logLines { flex: 1 1 auto; min-height: 0; max-height: none; }
 body.desk #cardGlance { flex: 0 1 auto; min-height: 0; max-height: 64%; overflow: auto; padding: 10px 12px; }
 body.desk #cardGlance .stat { padding: 5px 8px; }
@@ -420,6 +457,12 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
           <button class="btn" data-hold="ArrowLeft" type="button" aria-label="Rotate left">◀</button><button class="btn" data-hold="ArrowDown" type="button" aria-label="Camera down">▼</button><button class="btn" data-hold="ArrowRight" type="button" aria-label="Rotate right">▶</button>
         </div>
         <div class="ctlbtns">
+          <!-- phones (not fullscreen): Pause, Settings, Fullscreen sit above Cursor mode instead of on the game frame -->
+          <div class="ctlicons">
+            <button class="btn pause" id="btnPause2" type="button" aria-label="Pause bots" title="Pause bots">⏸</button>
+            <button class="btn" id="btnMore2" type="button" aria-label="Settings" title="Settings">⚙</button>
+            <button class="btn" id="btnFs2" type="button" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+          </div>
           <button class="btn toggle" id="btnCursor" type="button">Cursor mode</button>
         </div>
       </div>
@@ -491,48 +534,43 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
   </section>
 </main>
 
-<dialog class="sheet" id="moreSheet" aria-label="More controls">
+<dialog class="sheet" id="moreSheet" aria-label="Settings">
   <div class="in">
-    <div class="grab"></div>
-    <button class="btn" id="sheetExit" type="button" hidden>✕ Exit fullscreen</button>
-    <h3>Settings</h3>
-    <div class="row">
-      <button class="btn toggle" id="setBeta" type="button">Dynamic fullscreen</button>
-      <button class="btn toggle" id="setInput" type="button">Disable input</button>
-      <button class="btn toggle" id="setChat" type="button">Chat box</button>
-      <button class="btn toggle" id="setAccts" type="button">Accounts list</button>
-      <button class="btn toggle" id="setToasts" type="button">Live drop pop-ups</button>
-      <button class="btn toggle" id="setBadges" type="button">Minimap skill icons</button>
-    </div>
+    <header class="shd"><h2>Settings</h2><button class="btn" id="btnMoreClose" type="button">Done</button></header>
     <div class="row" id="fsRow" hidden>
-      <button class="btn pause" id="setPause" type="button">⏸ Pause automations</button>
+      <button class="btn pause" id="setPause" type="button">⏸ Pause bots</button>
+      <button class="btn" id="sheetExit" type="button" hidden>✕ Exit fullscreen</button>
     </div>
-    <span class="hint">Dynamic fullscreen splits the game into view, inventory, minimap and chat panels laid out for the phone (saved on this device, every account). Disable input applies to every account. Live drop pop-ups toast big drops and maxed accounts on the dashboard's accounts (tap one to watch it; saved on this device). Minimap skill icons show our other accounts on a lite account's minimap as what they train (hover for details, click to switch).</span>
-    <h3>Stream FPS</h3>
-    <div class="row" id="fpsRow">
-      <button class="btn toggle" type="button" data-fps="auto">Auto</button>
-      <button class="btn toggle" type="button" data-fps="15">15</button>
-      <button class="btn toggle" type="button" data-fps="30">30</button>
-      <button class="btn toggle" type="button" data-fps="60">60</button>
-    </div>
-    <span class="hint" id="fpsHint">Frame rate while you watch an account (every account, saved). Unwatched clients render at a low idle rate to save CPU; the bots play the same.</span>
-    <h3>Stream quality</h3>
-    <div class="row" id="qualRow">
-      <button class="btn toggle" type="button" data-q="auto">Auto</button>
-      <button class="btn toggle" type="button" data-q="60">Low</button>
-      <button class="btn toggle" type="button" data-q="75">Medium</button>
-      <button class="btn toggle" type="button" data-q="90">High</button>
-      <button class="btn toggle" type="button" data-q="100">Lossless</button>
-    </div>
-    <span class="hint">Auto (this device) adapts frame rate and quality to your connection - it steps down when frames stop arriving in time and back up when there is room. Fixed values apply to every device without Auto.</span>
-    <span class="hint">Image compression of the live stream (every account, saved). The game itself renders at a fixed 765×503; higher quality removes JPEG blur/blocking but uses more bandwidth (Lossless ≈ 4–6× Low).</span>
-    <h3>Client</h3>
-    <div class="row">
-      <button class="btn" id="btnReload" type="button" title="Reload the headless game client (dead/stuck client)">↻ Reload client</button>
-      <button class="btn" id="btnClient" type="button" hidden>Start client</button>
-    </div>
-    <span class="hint" id="hint">Tap = click · press + slide = drag · hold 1 s = right-click · Cursor mode turns the screen into a touchpad · arrows rotate the camera</span>
-    <button class="btn" id="btnMoreClose" type="button">Done</button>
+    <section class="grp">
+      <h3>Stream</h3>
+      <div class="segrow"><span>Frame rate</span>
+        <div class="seg" id="fpsRow">
+          <button class="btn" type="button" data-fps="auto">Auto</button><button class="btn" type="button" data-fps="15">15</button><button class="btn" type="button" data-fps="30">30</button><button class="btn" type="button" data-fps="60">60</button>
+        </div></div>
+      <div class="segrow"><span>Quality</span>
+        <div class="seg" id="qualRow">
+          <button class="btn" type="button" data-q="auto">Auto</button><button class="btn" type="button" data-q="60">Low</button><button class="btn" type="button" data-q="75">Med</button><button class="btn" type="button" data-q="90">High</button><button class="btn" type="button" data-q="100">Max</button>
+        </div></div>
+      <p class="hint" id="fpsHint">Auto fits this device's connection.</p>
+    </section>
+    <section class="grp">
+      <h3>Layout</h3>
+      <button class="srow" id="setPhoneFs" type="button"><span>Start in fullscreen<small>Phones open straight into the game</small></span><i class="sw"></i></button>
+      <button class="srow" id="setBeta" type="button"><span>Phone layout<small>Fullscreen splits into game, items, map and chat</small></span><i class="sw"></i></button>
+      <button class="srow" id="setChat" type="button"><span>Chat panel<small>In the phone layout</small></span><i class="sw"></i></button>
+      <button class="srow" id="setAccts" type="button"><span>Account switcher<small>In the phone layout</small></span><i class="sw"></i></button>
+    </section>
+    <section class="grp">
+      <h3>Game</h3>
+      <button class="srow" id="setInput" type="button"><span>Allow input<small>Taps and keys reach the game (all accounts)</small></span><i class="sw"></i></button>
+      <button class="srow" id="setBadges" type="button"><span>Bots on minimap<small>Your other accounts on drawn (lite) views</small></span><i class="sw"></i></button>
+      <button class="srow" id="setToasts" type="button"><span>Drop alerts<small>Pop-ups for big drops and maxed accounts</small></span><i class="sw"></i></button>
+      <div class="row grpbtns">
+        <button class="btn" id="btnReload" type="button" title="Reload the headless game client (dead/stuck client)">↻ Reload game</button>
+        <button class="btn" id="btnClient" type="button" hidden>Start client</button>
+      </div>
+    </section>
+    <p class="hint" id="hint">Tap = click · hold 1 s = right-click · arrows turn the camera</p>
   </div>
 </dialog>
 
@@ -952,7 +990,14 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
     rcan[k] = c;
   }
   let betaFs = false, betaChat = true, betaAccts = true;
-  try { betaFs = localStorage.getItem('dash.betaFs') === '1'; betaChat = localStorage.getItem('dash.betaChat') !== '0'; betaAccts = localStorage.getItem('dash.betaAccts') !== '0'; } catch {}
+  // phones default to the phone layout + starting in fullscreen (each can be turned off in Settings)
+  const phone = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  let phoneFs = phone;
+  try {
+    const b = localStorage.getItem('dash.betaFs'); betaFs = b == null ? phone : b === '1';
+    betaChat = localStorage.getItem('dash.betaChat') !== '0'; betaAccts = localStorage.getItem('dash.betaAccts') !== '0';
+    phoneFs = phone && localStorage.getItem('dash.phoneFs') !== '0';
+  } catch {}
   const betaOn = () => betaFs && document.body.classList.contains('fs');
   function regionNorm(el, clientX, clientY) {
     const reg = REGIONS[el.dataset.region], r = el.getBoundingClientRect();
@@ -1183,25 +1228,26 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
   $('setAccts').addEventListener('click', () => { betaAccts = !betaAccts; try { localStorage.setItem('dash.betaAccts', betaAccts ? '1' : '0'); } catch {} renderSettings(); layoutBeta(); });
   $('setChat').addEventListener('click', () => { betaChat = !betaChat; try { localStorage.setItem('dash.betaChat', betaChat ? '1' : '0'); } catch {} renderSettings(); layoutBeta(); });
   function renderSettings() {
-    $('setBeta').classList.toggle('on', betaFs); $('setBeta').textContent = betaFs ? 'Dynamic fullscreen ✓' : 'Dynamic fullscreen';
+    $('setBeta').classList.toggle('on', betaFs);
+    $('setPhoneFs').classList.toggle('on', phoneFs); $('setPhoneFs').hidden = !phone;
     const off = automation ? !automation.takeover : false;
-    $('setInput').classList.toggle('on', off); $('setInput').textContent = off ? 'Input disabled ✓' : 'Disable input';
-    $('setChat').classList.toggle('on', betaChat); $('setChat').textContent = betaChat ? 'Chat box ✓' : 'Chat box';
+    $('setInput').classList.toggle('on', !off);
+    $('setChat').classList.toggle('on', betaChat);
     for (const b of $('fpsRow').querySelectorAll('button')) b.classList.toggle('on', b.dataset.fps === 'auto' ? autoStream.fps : !autoStream.fps && Number(b.dataset.fps) === stream?.targetFps);
     for (const b of $('qualRow').querySelectorAll('button')) b.classList.toggle('on', b.dataset.q === 'auto' ? autoStream.quality : !autoStream.quality && Number(b.dataset.q) === stream?.quality);
     $('fpsRow').querySelector('[data-fps=auto]').textContent = autoStream.fps ? `Auto · ${autoStream.level().f}` : 'Auto';
-    $('qualRow').querySelector('[data-q=auto]').textContent = autoStream.quality ? `Auto · ${({ 60: 'Low', 75: 'Medium', 90: 'High' })[autoStream.level().q] ?? autoStream.level().q}` : 'Auto';
-    if (stream?.idleFps) $('fpsHint').textContent = `Frame rate while you watch an account (every account, saved). Unwatched clients render at ${stream.idleFps} fps to save CPU; the bots play the same.`;
+    $('qualRow').querySelector('[data-q=auto]').textContent = autoStream.quality ? `Auto · ${({ 50: 'Low', 60: 'Low', 75: 'Med', 90: 'High' })[autoStream.level().q] ?? autoStream.level().q}` : 'Auto';
     const fs = document.body.classList.contains('fs');
     $('fsRow').hidden = !fs; $('sheetExit').hidden = !fs;
-    $('setPause').classList.toggle('on', !!automation?.paused); $('setPause').textContent = automation?.paused ? '▶ Resume automations' : '⏸ Pause automations';
-    $('setAccts').classList.toggle('on', betaAccts); $('setAccts').textContent = betaAccts ? 'Accounts list ✓' : 'Accounts list';
-    const mb = !!window.LiteView?.badges(); $('setBadges').classList.toggle('on', mb); $('setBadges').textContent = mb ? 'Minimap skill icons ✓' : 'Minimap skill icons';
-    const lt = !!window.FleetToasts?.enabled(); $('setToasts').classList.toggle('on', lt); $('setToasts').textContent = lt ? 'Live drop pop-ups ✓' : 'Live drop pop-ups';
+    $('setPause').classList.toggle('on', !!automation?.paused); $('setPause').textContent = automation?.paused ? '▶ Resume bots' : '⏸ Pause bots';
+    $('setAccts').classList.toggle('on', betaAccts);
+    $('setBadges').classList.toggle('on', !!window.LiteView?.badges());
+    $('setToasts').classList.toggle('on', !!window.FleetToasts?.enabled());
   }
   // live pop-ups for big drops on the accounts this dashboard shows; a tap switches to that account
   $('setBadges').addEventListener('click', () => { window.LiteView?.badges(!window.LiteView.badges()); renderSettings(); });
-  $('setToasts').addEventListener('click', () => { const on = !window.FleetToasts?.enabled(); window.FleetToasts?.setEnabled(on); renderSettings(); toast(on ? 'Live drop pop-ups on' : 'Live drop pop-ups off'); });
+  $('setToasts').addEventListener('click', () => { const on = !window.FleetToasts?.enabled(); window.FleetToasts?.setEnabled(on); renderSettings(); toast(on ? 'Drop alerts on' : 'Drop alerts off'); });
+  $('setPhoneFs').addEventListener('click', () => { phoneFs = !phoneFs; try { localStorage.setItem('dash.phoneFs', phoneFs ? '1' : '0'); } catch {} renderSettings(); });
   window.FleetToasts?.init({
     open: (name) => { if (accountList.some((a) => a.name === name)) switchAccount(name); else location.href = '/highlights'; },
     watching: () => (accountList.length ? accountList.map((a) => a.name) : null),
@@ -1210,7 +1256,7 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
     betaFs = !betaFs;
     try { localStorage.setItem('dash.betaFs', betaFs ? '1' : '0'); } catch {}
     renderSettings(); layoutBeta();
-    if (betaFs && !document.body.classList.contains('fs')) toast('Dynamic layout applies in fullscreen (⛶)', 2600);
+    if (betaFs && !document.body.classList.contains('fs')) toast('Phone layout shows in fullscreen (⛶)', 2600);
   });
   renderSettings();
 
@@ -1531,8 +1577,9 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
   // ------------------------------------------------------------ fullscreen
   let fsNative = false;
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
-  async function enterFs() {
+  async function enterFs(auto = false) {
     document.body.classList.add('fs'); layoutBeta(); renderSettings();
+    if (auto === true) return; // page load on a phone: no gesture, so CSS fullscreen (a home-screen app has no browser bars anyway)
     const el = $('stage');
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req) {
@@ -1550,10 +1597,16 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
   const onFsChange = () => { if (!fsEl() && fsNative) { fsNative = false; document.body.classList.remove('fs'); } layoutBeta(); };
   document.addEventListener('fullscreenchange', onFsChange);
   document.addEventListener('webkitfullscreenchange', onFsChange);
-  $('btnFs').addEventListener('click', enterFs);
+  $('btnFs').addEventListener('click', () => enterFs());
+  // phone icon row (above Cursor mode) drives the same controls
+  $('btnPause2').addEventListener('click', () => $('btnPause').click());
+  $('btnMore2').addEventListener('click', () => $('btnMore').click());
+  $('btnFs2').addEventListener('click', () => enterFs());
   // Phones: landscape means fullscreen. Rotating to landscape enters it; rotating back leaves it if we entered it.
   let autoFs = false;
   const landscapeMq = matchMedia('(orientation: landscape)');
+  // phones start in fullscreen (Settings → Start in fullscreen); landscape already enters it below
+  if (phoneFs && !landscapeMq.matches) setTimeout(() => { if (!document.body.classList.contains('fs')) enterFs(true); }, 0);
   function syncOrientationFs() {
     if (!isMobile) return;
     const fs = document.body.classList.contains('fs');
@@ -1617,6 +1670,7 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
     const bp = $('btnPause');
     bp.classList.toggle('on', a.paused);
     bp.textContent = a.paused && !a.runningWhilePaused ? '▶' : '⏸'; // paused: play resumes; scripts that started anyway: pause again
+    $('btnPause2').classList.toggle('on', a.paused); $('btnPause2').textContent = bp.textContent;
     renderSettings();
     $('fsPause').classList.toggle('on', a.paused); $('fsPause').textContent = a.paused ? '▶' : '⏸'; $('fsPause').title = a.paused ? 'Resume automations' : 'Pause automations';
     $('stage').classList.toggle('take', a.takeover); $('stage').classList.toggle('noinput', !a.takeover);

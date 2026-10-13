@@ -1,7 +1,7 @@
 {
-  "name": "sokobot dashboard",
-  "short_name": "sokobot",
-  "description": "Live view, activity log and gold tracking for the sokobot accounts.",
+  "name": "RS-SDK Dashboard",
+  "short_name": "RS Dash",
+  "description": "Live view and remote control for rs-sdk bot accounts.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

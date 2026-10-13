@@ -57,7 +57,8 @@ export class Instances {
             return { name: a.name, botDir: persistent, procMatch: [], client: managed ? 'managed' : 'lite', autostart: managed };
         });
         writeFileSync(join(telemetry, 'accounts.json'), JSON.stringify({ accounts: entries }, null, 1) + '\n', { mode: 0o600 });
-        return JSON.stringify(accounts.map(a => [a.name, a.server, a.password, a.runClient, a.bot_dir]));
+        // order is left out: the dashboard follows accounts.json's order every 15 s by itself, no restart needed
+        return JSON.stringify(accounts.map(a => [a.name, a.server, a.password, a.runClient, a.bot_dir]).sort((x, y) => String(x[0]).localeCompare(String(y[0]))));
     }
 
     /** Running (or started) dashboard for the user; null when the user has no accounts yet. */
@@ -165,6 +166,9 @@ export class Instances {
         const p = inst.restarting;
         await p;
     }
+
+    /** Rewrite accounts.json (e.g. a new order) without restarting the dashboard. */
+    rewrite(userId: number) { const accounts = this.store.listAccounts(userId); if (accounts.length) this.writeConfig(userId, accounts); }
 
     /** Account removed: delete its credentials (its history stays until the user is deleted). */
     forget(userId: number, name: string) {

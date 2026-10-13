@@ -35,6 +35,8 @@ export class Store {
         this.db = new Database(join(dataDir, file), { create: true });
         this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
         this.db.exec(SCHEMA);
+        const cols = (this.db.query('PRAGMA table_info(accounts)').all() as { name: string }[]).map(c => c.name);
+        if (!cols.includes('position')) this.db.exec('ALTER TABLE accounts ADD COLUMN position INTEGER');
     }
 
     // ---------------------------------------------------------------- users + sessions
@@ -98,8 +100,8 @@ export class Store {
     }
     listAccounts(userId?: number): Account[] {
         const rows = (userId == null
-            ? this.db.query('SELECT * FROM accounts ORDER BY id').all()
-            : this.db.query('SELECT * FROM accounts WHERE user_id = ? ORDER BY id').all(userId)) as AccountRow[];
+            ? this.db.query('SELECT * FROM accounts ORDER BY COALESCE(position, id), id').all()
+            : this.db.query('SELECT * FROM accounts WHERE user_id = ? ORDER BY COALESCE(position, id), id').all(userId)) as AccountRow[];
         return rows.map(r => this.toAccount(r));
     }
     usersWithAccounts() { return (this.db.query('SELECT DISTINCT user_id FROM accounts').all() as { user_id: number }[]).map(r => r.user_id); }
@@ -137,4 +139,12 @@ export class Store {
         if (patch.runClient != null) this.db.query('UPDATE accounts SET run_client = ? WHERE id = ?').run(patch.runClient ? 1 : 0, id);
     }
     deleteAccount(id: number) { this.db.query('DELETE FROM accounts WHERE id = ?').run(id); }
+    /** New display order (names first in this order, the rest keep theirs after them). */
+    setOrder(userId: number, names: string[]) {
+        const all = this.listAccounts(userId);
+        const lower = names.map(n => n.toLowerCase());
+        const ordered = [...lower.map(n => all.find(a => a.name.toLowerCase() === n)).filter((a): a is Account => !!a), ...all.filter(a => !lower.includes(a.name.toLowerCase()))];
+        const q = this.db.query('UPDATE accounts SET position = ? WHERE id = ?');
+        this.db.transaction(() => ordered.forEach((a, i) => q.run(i + 1, a.id)))();
+    }
 }

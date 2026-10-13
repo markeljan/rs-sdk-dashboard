@@ -67,6 +67,9 @@ async function render() {
         <h2 style="margin-top:14px">Or from a terminal in your rs-sdk checkout</h2>
         <div class="copywrap"><pre class="code" id="connectCmd">curl -fsSL ${esc(me.origin)}/connect.sh | RSD_TOKEN=${esc(token)} bash</pre><button class="btn sm" id="cpCmd">Copy</button></div>
         <span class="hint">Adds every <code>bots/*/bot.env</code>. Put <code>RUN_CLIENT=1</code> before <code>bash</code> to also host their game clients here.</span>
+        <h2 style="margin-top:14px">Show what the bots are doing <span id="connState" class="muted"></span></h2>
+        <div class="copywrap"><pre class="code" id="connectorCmd">curl -fsSL ${esc(me.origin)}/connector.ts -o .rsd-connector.ts && RSD_TOKEN=${esc(token)} bun .rsd-connector.ts</pre><button class="btn sm" id="cpConn">Copy</button></div>
+        <span class="hint">Run it next to your bots (in the rs-sdk checkout) and leave it running: it sends each bot's log, running script, gold and drops here, and applies Pause from the dashboard.</span>
       </section>
       <section class="card" id="add">
         <h2>Add an account</h2>
@@ -86,9 +89,9 @@ async function render() {
       </section>
     </div>
     ${accounts.length ? `<section class="card"><h2>Your accounts <span class="muted">${accounts.length}${me.user.limits.accounts ? ' / ' + me.user.limits.accounts : ''}</span></h2>
-      ${accounts.map(a => `<div class="acct" data-name="${esc(a.name)}">
+      ${accounts.map((a, i) => `<div class="acct" data-name="${esc(a.name)}">
         <div><span class="nm">${esc(a.name)}</span><span class="tag ${a.runClient ? 'managed' : ''}">${a.runClient ? 'game client here' : 'lite'}</span>${a.source !== 'ui' ? `<span class="tag">${esc(a.source)}</span>` : ''}<br><span class="hint">${esc(a.server)}</span></div>
-        <div class="row"><button class="btn sm toggle ${a.runClient ? 'on' : ''}" data-act="client">${a.runClient ? 'Client: on' : 'Client: off'}</button><button class="btn sm" data-act="edit">Edit</button><button class="btn sm danger" data-act="del">Remove</button></div>
+        <div class="row"><span class="ord"><button class="btn sm" data-act="up" ${i === 0 ? 'disabled' : ''} title="Move up" aria-label="Move ${esc(a.name)} up">▲</button><button class="btn sm" data-act="down" ${i === accounts.length - 1 ? 'disabled' : ''} title="Move down" aria-label="Move ${esc(a.name)} down">▼</button><button class="btn sm" data-act="top" ${i === 0 ? 'disabled' : ''} title="Move to the top">⤒</button></span><button class="btn sm toggle ${a.runClient ? 'on' : ''}" data-act="client">${a.runClient ? 'Client: on' : 'Client: off'}</button><button class="btn sm" data-act="edit">Edit</button><button class="btn sm danger" data-act="del">Remove</button></div>
       </div>`).join('')}
       <span class="hint">Client on = this dashboard runs the account's game client (live view, tap to play). Off = shown as a lite view while its client runs elsewhere (your browser tab, the lite runner).${me.user.limits.clients < 1000 ? ` Up to ${me.user.limits.clients} game clients.` : ''}</span>
     </section>` : ''}
@@ -112,6 +115,13 @@ function bind(accounts) {
   $('#showSkill').onclick = () => { const p = $('#skillText'); p.hidden = !p.hidden; };
   $('#dlSkill').href = URL.createObjectURL(new Blob([skill], { type: 'text/markdown' }));
   $('#cpCmd').onclick = () => copy($('#connectCmd').textContent);
+  $('#cpConn').onclick = () => copy($('#connectorCmd').textContent);
+  api('/connect/status').then(c => { $('#connState').textContent = c ? `· connected from ${c.host}, ${ago(Date.now() - c.ageMs)} (${c.accounts} bots)` : '· not connected'; }).catch(() => {});
+  const order = accounts.map(a => a.name);
+  const reorder = async (name, to) => {
+    const next = order.filter(n => n !== name); next.splice(Math.max(0, Math.min(next.length, to)), 0, name);
+    try { await api('/accounts/order', { body: { names: next } }); await render(); } catch (err) { toast(err.message); }
+  };
   let m = 'form';
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
     m = b.dataset.m; document.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b));
@@ -147,6 +157,10 @@ function bind(accounts) {
   document.querySelectorAll('.acct').forEach(row => {
     const name = row.dataset.name, a = accounts.find(x => x.name === name);
     const path = `/accounts/${encodeURIComponent(name)}`;
+    const at = order.indexOf(name);
+    row.querySelector('[data-act=up]').onclick = () => reorder(name, at - 1);
+    row.querySelector('[data-act=down]').onclick = () => reorder(name, at + 1);
+    row.querySelector('[data-act=top]').onclick = () => reorder(name, 0);
     row.querySelector('[data-act=client]').onclick = async e => {
       const b = e.currentTarget; b.disabled = true;
       try { await api(path, { method: 'PATCH', body: { runClient: !a.runClient } }); toast(a.runClient ? `Stopped ${name}'s game client` : `Starting ${name}'s game client`); await render(); }

@@ -313,14 +313,14 @@ type GoldRow = { t: number; total: number; coins: number; items: number; phase: 
 // staggered starts don't show up as fake growth).
 // /highlights page data (best drops, achievements, earners, methods); cached - the loot logs are tens of thousands of lines
 // big drops / maxed accounts as they land, for the dashboard toasts and the /highlights live feed
-const liveEvents = new LiveEvents(ROOT).start();
+const liveEvents = new LiveEvents(ROOT, DATA_DIR).start();
 const HIGHLIGHTS_TTL_MS = 60_000;
 let highlightsCache: { at: number; v: unknown } | null = null;
 function highlightsPayload() {
     if (highlightsCache && Date.now() - highlightsCache.at < HIGHLIGHTS_TTL_MS) return highlightsCache.v;
     let earners: any[] = [];
     try { earners = moneyOverview(0).accounts; } catch { /* gold rows mid-write */ }
-    const v = buildHighlights(ROOT, earners);
+    const v = buildHighlights(ROOT, earners, DATA_DIR);
     highlightsCache = { at: Date.now(), v };
     return v;
 }

@@ -4,7 +4,7 @@
 //   - which accounts you have: /_rsd/api/accounts (web UI, env vars, rs-sdk checkout, connect.sh, agents)
 //   - agent onboarding: signed API tokens (recorded on first use) and a copy-paste skill with the token built in
 // and proxies every other request (HTTP + WebSocket) to the user's dashboard process.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, normalize } from 'node:path';
 import type { Server, ServerWebSocket } from 'bun';
 import type { Config } from './config';
@@ -130,7 +130,7 @@ export function startServer(cfg: Config) {
     // (bots/*/script-host.json, the rs-sdk script host). Agents elsewhere have no process here, so every activity/log
     // post marks the account as run by "<script>" for 2 minutes through such a file. Hosted, game account names are
     // unique across users, so one file per user can't mark anyone else's account.
-    const agentSeen = new Map<number, Map<string, { at: number; script: string }>>();
+    const agentSeen = new Map<number, Map<string, { at: number; script: string; paused?: boolean }>>();
     function writeAgentStatus(userId: number) {
         const seen = agentSeen.get(userId);
         if (!seen) return;
@@ -141,14 +141,71 @@ export function startServer(cfg: Config) {
         const accts = new Map(store.listAccounts(userId).map(a => [a.name, a]));
         writeFileSync(join(dir, 'script-host.json'), JSON.stringify({
             pid: process.pid, at: new Date(now).toISOString(),
-            bots: [...seen].filter(([n]) => accts.has(n)).map(([name, v]) => ({ name, script: v.script, entry: v.script.replace(/[^\w./-]/g, '').slice(0, 60) || 'agent', state: 'agent' })),
+            bots: [...seen].filter(([n]) => accts.has(n)).map(([name, v]) => ({ name, script: v.script, entry: v.script.replace(/[^\w./-]/g, '').slice(0, 60) || 'agent', state: 'agent', paused: !!v.paused })),
         }) + '\n');
     }
-    function agentAlive(userId: number, name: string, script: string) {
+    function agentAlive(userId: number, name: string, script: string, paused = false, write = true) {
         let seen = agentSeen.get(userId);
         if (!seen) agentSeen.set(userId, seen = new Map());
-        seen.set(name, { at: Date.now(), script });
-        writeAgentStatus(userId);
+        seen.set(name, { at: Date.now(), script, paused });
+        if (write) writeAgentStatus(userId);
+    }
+
+    // ------------------------------------------------------------ connector (app/connector.ts on the machine running the bots)
+    // Every few seconds it sends each bot's new log lines, tasks.json and running scripts, plus new rows of the fleet's
+    // telemetry files (gold, drops); we write them where the dashboard reads them (account dir, user telemetry dir) and
+    // answer with the accounts paused on the dashboard, which it mirrors to the bots (PAUSED file + SIGSTOP).
+    const TELEMETRY_FILE = /^(gold|loot|kbd-drops|alt-drops|clues?|drops)-[\w.-]{1,80}\.jsonl$/;
+    const connectors = new Map<number, { host: string; at: number; accounts: number }>();
+    const capFile = (file: string, max = 4 * 1024 * 1024) => {
+        try {
+            if (statSync(file).size <= max) return;
+            const keep = readFileSync(file).subarray(-Math.floor(max / 2));
+            writeFileSync(file, keep.subarray(keep.indexOf(10) + 1));
+        } catch { /* gone */ }
+    };
+    async function connectorSync(user: User, b: any) {
+        const owned = new Map(store.listAccounts(user.id).map(a => [a.name.toLowerCase(), a]));
+        const paused: string[] = [];
+        let n = 0;
+        for (const r of Array.isArray(b.accounts) ? b.accounts.slice(0, 500) : []) {
+            const acct = owned.get(String(r?.name ?? '').toLowerCase());
+            if (!acct) continue;
+            n++;
+            const dir = acct.source === 'rs-sdk' && acct.bot_dir ? acct.bot_dir : join(instances.userDir(user.id), 'accounts', acct.name);
+            mkdirSync(dir, { recursive: true });
+            const local = acct.source === 'rs-sdk'; // local mode: the dashboard already reads this bot's own folder
+            const logName = local ? '' : String(r.log?.file ?? '');
+            if (/^[\w.-]{1,80}\.log$/.test(logName) && typeof r.log?.text === 'string' && r.log.text) {
+                const file = join(dir, logName);
+                appendFileSync(file, r.log.text.slice(-256 * 1024));
+                capFile(file, 2 * 1024 * 1024);
+            }
+            if (!local && r.tasks && typeof r.tasks === 'object') {
+                const text = JSON.stringify(r.tasks);
+                if (text.length < 64 * 1024) writeFileSync(join(dir, 'tasks.json'), text + '\n');
+            }
+            const procs = Array.isArray(r.procs) ? r.procs.slice(0, 20) : [];
+            const isPaused = existsSync(join(dir, 'PAUSED'));
+            if (isPaused) paused.push(acct.name);
+            if (procs.length) {
+                const main = procs.find((p: any) => !/supervis/.test(String(p.script))) ?? procs[0];
+                const label = [String(main.script ?? 'script').split('/').pop(), ...(Array.isArray(main.args) ? main.args.slice(0, 2) : [])].join(' ').slice(0, 80);
+                agentAlive(user.id, acct.name, label, isPaused || procs.every((p: any) => p.stopped), false);
+            }
+        }
+        writeAgentStatus(user.id);
+        const tdir = join(instances.userDir(user.id), 'telemetry');
+        mkdirSync(tdir, { recursive: true });
+        for (const t of Array.isArray(b.telemetry) ? b.telemetry.slice(0, 200) : []) {
+            const name = String(t?.file ?? '');
+            if (!TELEMETRY_FILE.test(name) || typeof t.text !== 'string' || !t.text) continue;
+            const file = join(tdir, name);
+            appendFileSync(file, t.text.slice(-512 * 1024));
+            capFile(file);
+        }
+        connectors.set(user.id, { host: String(b.host ?? '?').slice(0, 60), at: Date.now(), accounts: n });
+        return { ok: true, accounts: n, paused };
     }
     setInterval(() => { for (const u of agentSeen.keys()) writeAgentStatus(u); }, 30_000);
 
@@ -223,6 +280,15 @@ export function startServer(cfg: Config) {
         if (path === '/skill' && method === 'GET') return new Response(skillMarkdown(origin(req), makeToken(key, user.id), cfg.mode), { headers: { 'content-type': 'text/markdown; charset=utf-8', 'cache-control': 'no-store' } });
 
         if (path === '/accounts' && method === 'GET') return json({ accounts: store.listAccounts(user.id).map(publicAccount) });
+        if (path === '/accounts/order' && method === 'POST') {
+            const b = await body(req);
+            if (!Array.isArray(b.names)) return bad('names: [account names in the new order]');
+            store.setOrder(user.id, b.names.map(String));
+            instances.rewrite(user.id);
+            return json({ ok: true, accounts: store.listAccounts(user.id).map(publicAccount) });
+        }
+        if (path === '/connect/sync' && method === 'POST') return json(await connectorSync(user, await body(req)));
+        if (path === '/connect/status' && method === 'GET') { const c = connectors.get(user.id); return json(c ? { ...c, ageMs: Date.now() - c.at } : null); }
         if (path === '/accounts' && method === 'POST') return addAccount(user, await body(req));
         if (path === '/accounts/generate' && method === 'POST') return json({ name: 'b' + randomAlnum(8), password: randomAlnum(12) });
         if (path === '/admin' && method === 'GET') {
@@ -320,6 +386,7 @@ export function startServer(cfg: Config) {
                 catch (e) { log(`api error ${req.method} ${path}: ${(e as Error).stack ?? e}`); return bad('internal error', 500); }
             }
             if (path === '/connect.sh') return new Response(connectScript(origin(req)), { headers: { 'content-type': 'text/x-shellscript; charset=utf-8' } });
+            if (path === '/connector.ts') return new Response(Bun.file(join(import.meta.dir, 'connector.ts')), { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-cache' } });
             if (path.startsWith('/_rsd/')) {
                 const f = normalize(join(PAGES, path.slice('/_rsd/'.length)));
                 if (f.startsWith(PAGES) && existsSync(f) && !f.endsWith('/')) return page(f.slice(PAGES.length + 1));
