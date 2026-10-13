@@ -1,0 +1,26 @@
+name: E2E (fresh machine)
+# A brand-new macOS machine on GitHub's network: fresh upstream rs-sdk checkout with one bot, then the hosted flow
+# (sign up, agent skill / connect.sh, cloud client, stream, script, phone screenshots) and the local setup.
+on: workflow_dispatch
+jobs:
+  e2e:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: rs-sdk-dashboard }
+      - uses: oven-sh/setup-bun@v2
+      - name: Fresh upstream rs-sdk checkout with one bot
+        env: { BOT_NAME: '${{ secrets.E2E_BOT_NAME }}', BOT_PASSWORD: '${{ secrets.E2E_BOT_PASSWORD }}' }
+        run: |
+          git clone --depth 1 https://github.com/MaxBittker/rs-sdk.git rs-sdk
+          cd rs-sdk && bun install --ignore-scripts
+          mkdir -p "bots/$BOT_NAME" && printf 'BOT_USERNAME=%s\nPASSWORD=%s\nSERVER=rs-sdk-demo.fly.dev\nTELEMETRY=false\n' "$BOT_NAME" "$BOT_PASSWORD" > "bots/$BOT_NAME/bot.env"
+      - name: Install the dashboard
+        run: cd rs-sdk-dashboard && bun install
+      - name: Run the end-to-end check
+        env: { BOT_NAME: '${{ secrets.E2E_BOT_NAME }}', RS_SDK: '${{ github.workspace }}/rs-sdk', OUT: '${{ github.workspace }}/e2e-out', DASH: 'https://dash.soko.tools' }
+        run: cd rs-sdk-dashboard && bun scripts/e2e-fresh-machine.ts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: e2e-out, path: e2e-out }
