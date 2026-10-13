@@ -14,7 +14,7 @@ cd infra/aws
 HOST=<ip> DOMAIN=dash.example.com ADMIN_EMAIL=you@example.com ./deploy.sh
 ```
 
-Re-run `deploy.sh` to ship updates. Game clients restart, and bots reconnect on their own.
+Ship dashboard-only changes (`tools/dashboard`) with `HOST=<ip> ./hot-deploy.sh`: game clients stay logged in (detach/reattach). Use `deploy.sh` for `app/`, dependencies or the Dockerfile; that restarts every game client (bots reconnect on their own).
 
 Operations:
 
