@@ -131,3 +131,4 @@ svg.spark { width: 100%; height: 48px; display: block; }
 footer.foot { text-align: center; color: var(--muted); font-size: 12px; padding: 24px 12px 32px; }
 .dot.err { min-height: 0; font-size: 0; }
 @media (max-width: 600px) { .hide-sm { display: none; } header.top { padding: 8px 10px; gap: 8px; } main { padding: 10px; } }
+.stage canvas { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }

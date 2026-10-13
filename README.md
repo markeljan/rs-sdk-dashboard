@@ -62,6 +62,8 @@ docker compose up -d          # http://localhost:4747, data in the rsd-data volu
 
 If anyone else can reach the port, set `RSD_PASSWORD`. Without it, anyone on your network can open the dashboard and click in your games.
 
+Agents: see [docs/AGENTS.md](docs/AGENTS.md) for a drop-in guide (setup, game-client etiquette, activity reporting).
+
 ## Configuration
 
 Everything is set with environment variables. Bun reads a `.env` file automatically, and [`.env.example`](.env.example) lists them all.
