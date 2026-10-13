@@ -121,6 +121,8 @@ async function tick() {
     }
     const procs = procsByBot(names);
     const accounts: any[] = [];
+    // read positions are committed only after the dashboard accepted the batch, so nothing is lost while it's down
+    const next: State = { ...st, logs: { ...st.logs }, tele: { ...st.tele }, tasks: { ...st.tasks } };
     for (const name of names) {
         const dir = join(ROOT, 'bots', name);
         const row: any = { name, procs: procs.get(name) ?? [] };
@@ -129,13 +131,13 @@ async function tick() {
             const prev = st.logs[name];
             const from = prev?.file === log ? prev.off : Math.max(0, statSync(log).size - 16 * 1024); // a new log: its recent tail
             const { text, end } = readFrom(log, from, 128 * 1024);
-            st.logs[name] = { file: log, off: end };
+            next.logs[name] = { file: log, off: end };
             if (text) row.log = { file: log.split('/').pop(), text };
         }
         const tf = join(dir, 'tasks.json');
         if (existsSync(tf)) {
             const m = statSync(tf).mtimeMs;
-            if (st.tasks[name] !== m) { try { row.tasks = JSON.parse(readFileSync(tf, 'utf8')); st.tasks[name] = m; } catch { /* mid-write */ } }
+            if (st.tasks[name] !== m) { try { row.tasks = JSON.parse(readFileSync(tf, 'utf8')); next.tasks[name] = m; } catch { /* mid-write */ } }
         }
         accounts.push(row);
     }
@@ -146,8 +148,10 @@ async function tick() {
         const file = join(tdir, f);
         const from = st.tele[f] ?? Math.max(0, statSync(file).size - 256 * 1024);
         const { text, end } = readFrom(file, from, 512 * 1024);
-        st.tele[f] = end;
-        if (text) telemetry.push({ file: f, text });
+        if (!text) { next.tele[f] = end; continue; }
+        if (telemetry.length >= 150) continue; // the rest go in the next batch
+        next.tele[f] = end;
+        telemetry.push({ file: f, text });
     }
     const r = await fetch(`${URL_}/_rsd/api/connect/sync`, {
         method: 'POST', headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
@@ -155,6 +159,7 @@ async function tick() {
     });
     if (!r.ok) throw new Error(`sync HTTP ${r.status}`);
     const res = await r.json() as { paused: string[] };
+    st = { ...next, pausedByUs: st.pausedByUs };
     applyPause(new Set(res.paused ?? []), procs);
     save();
 }
