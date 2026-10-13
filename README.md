@@ -1,149 +1,109 @@
 # RS-SDK Dashboard
 
-A web dashboard for [rs-sdk](https://github.com/MaxBittker/rs-sdk) bot accounts. Watch your bots play from your laptop or phone, tap in the game when they get stuck, track XP rates, and keep game clients running in the cloud so your agents' scripts work when your computer is off.
+This is the multi-account dashboard for [rs-sdk](https://github.com/MaxBittker/rs-sdk) bots. It is the same dashboard the rs-sdk fleet runs. Use it to watch every bot live from a laptop or phone, tap into the game when a bot gets stuck, follow XP and gold rates, and keep game clients running in the cloud so your agents' scripts keep working when your computer is off.
 
 You can use it two ways:
 
-- **Hosted**: sign up at **https://dash.soko.tools**. It's free, with nothing to install.
-- **Local**: run it yourself with Bun or Docker. Your accounts stay on your machine.
+- **Hosted**: https://dash.soko.tools. It's free: sign up, add accounts, done.
+- **Local**: run it yourself with Bun or Docker.
 
-Both run the same code, so they have the same features.
+## Quick start: hosted, with an AI agent
 
-## What it does
+1. Sign up at https://dash.soko.tools.
+2. Click **Copy agent skill** and paste it into Claude Code, Codex, ChatGPT or any other agent working in your rs-sdk checkout. The skill already contains your dashboard URL and an API token. It tells the agent to add every `bots/*/bot.env`, optionally host their game clients, and report what each bot is doing.
+3. Open the dashboard on your phone and choose **Share → Add to Home Screen**.
 
-- **Every account at a glance**: online status, combat and total level, HP, XP/h, and what each bot is doing.
-- **Live game view**: the dashboard can run the game client for an account (headless Chrome) and stream it to any browser. You can tap, right-click (long-press on phones), type and rotate the camera. It's installable as a phone app (PWA).
-- **Works with your agents**: rs-sdk scripts and MCP `execute_code` connect to the game server as usual and drive the client the dashboard runs. You don't need a browser tab open.
-- **Account details**: skills, inventory, equipment, game messages, in-game chat (read and send), an XP graph, and your scripts' log tail (local mode with an rs-sdk checkout).
-- **Agent API**: use API tokens to add accounts, read state as JSON, and post an "activity" line from your scripts.
+Without an agent, you have three other ways to add accounts:
 
-The dashboard only talks to the rs-sdk **gateway** (the same server your bots use). It needs nothing from your rs-sdk checkout, and it works with the public demo server, your own server, or `localhost`.
+- **＋ Add account**: enter a username and password, or paste a `bot.env`.
+- **Import bots folder**: pick your rs-sdk `bots` folder.
+- **Terminal**: run this one line in your rs-sdk checkout:
 
-## Quick start: hosted
-
-1. Open https://dash.soko.tools and create an account.
-2. **＋ Add account**: enter your bot's username and password (from `bots/<name>/bot.env`), or paste the whole `bot.env`. To add many bots at once, use **Import many** and pick your rs-sdk `bots` folder. You can also create a token (⚙ Settings → API tokens) and run this from your rs-sdk checkout:
-   ```bash
-   curl -fsSL https://dash.soko.tools/connect.sh | RSD_TOKEN=rsd_... bash      # RUN_CLIENT=1 to also host the clients
-   ```
-3. Optional: tick **Run the game client on this dashboard**. Close your own game tab for that account first, because only one client can be logged in per account. From then on the client runs on our servers 24/7.
-4. On your phone, open the same URL and choose **Add to Home Screen**.
-
-Your agent setup doesn't change. Scripts keep using `bot.env`, and they now drive the cloud client. Each account's **Connect agent** tab shows the exact `bot.env`.
+  ```bash
+  curl -fsSL https://dash.soko.tools/connect.sh | RSD_TOKEN=<token from the page> bash      # RUN_CLIENT=1 to host the clients
+  ```
 
 ## Quick start: local
 
-You need a recent [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`, or `bun upgrade`).
+Install Bun first (`curl -fsSL https://bun.sh/install | bash`).
 
 ```bash
-git clone https://github.com/markeljan/rs-sdk-dashboard.git
-cd rs-sdk-dashboard
+git clone https://github.com/markeljan/rs-sdk-dashboard.git && cd rs-sdk-dashboard
 bun install
-bun start                     # http://localhost:4747 (also prints LAN URLs for your phone)
+RS_SDK_DIR=~/rs-sdk bun start      # http://localhost:4747; imports every bots/<name>/bot.env from your checkout
 ```
 
-Then add accounts in the web UI, or use any of these:
+You can also start it with:
 
-```bash
-RS_SDK_DIR=~/rs-sdk bun start                         # import every bots/*/bot.env (+ show script logs)
-RSD_ACCOUNTS="mybot:secret, alt2:pw!" bun start       # trailing ! = run its game client here
-bun src/cli.ts import ~/rs-sdk/bots/mybot/bot.env     # or an accounts.json, or an rs-sdk dir
-bun src/cli.ts add mybot secret --client
-bun src/cli.ts list
+- `bun start` with no settings, then add accounts on the page.
+- `RSD_ACCOUNTS="mybot:pw, alt:pw!" bun start`. A trailing `!` means the dashboard runs that account's game client.
+- `bun app/cli.ts import <bot.env | accounts.json | rs-sdk dir>`.
+- `bun app/cli.ts skill` prints the agent skill for this local dashboard.
+
+`bun install` downloads the Chrome used for game clients (puppeteer). Set `RSD_PASSWORD` if anyone else can reach the port.
+
+Docker: `docker compose up -d`, then open http://localhost:4747.
+
+## Account types
+
+- **Game client here** (managed): the dashboard keeps a headless game client logged in, streams it at up to 60 fps, and takes taps and keys. Scripts and MCP `execute_code` drive this client through the gateway, so don't open a second client for the account.
+- **Lite**: the account's client runs somewhere else (a browser tab or the lite runner). The dashboard draws a simulated 2004 client from the account's live state, so you can watch it but not send input.
+
+Every view, setting and feature comes from the dashboard itself: Bot HQ, dynamic fullscreen, toasts, highlights, the stream FPS and quality settings, and the rest. ⚙ Settings → **Accounts & agents** links to account management.
+
+## How it's built
+
+```
+browser / phone ──▶ app/ (front server: login, accounts, tokens, agent skill, proxy)
+                          └─▶ one tools/dashboard/server.ts per user on 127.0.0.1 (the rs-sdk fleet dashboard, unmodified)
+                                 ├─ observe-mode SDK + gateway HTTP for state      (rs-sdk gateway)
+                                 └─ headless Chrome per "game client here" account (/bot?bot=…)
 ```
 
-Game clients need Chrome. The dashboard uses an installed Chrome or Chromium, or downloads `chrome-headless-shell` once (about 100 MB) into `~/.rs-dashboard/chrome`.
+- `tools/`, `sdk/` and `server/` are synced verbatim from rs-sdk by `bun scripts/sync-from-rs-sdk.ts <rs-sdk checkout>`. Don't edit them here. Change the dashboard in rs-sdk, then sync. `SYNCED_FROM` records the rs-sdk commit.
+- `app/` is this project's own code. It turns each user's accounts into that user's dashboard `accounts.json` and `bot.env` files, then proxies HTTP and WebSockets to it.
+- API tokens are signed, not stored. Every visit gets a fresh token built into the skill. A token is recorded the first time it's used, and you can rename or revoke it under Manage accounts.
+- Game passwords are stored with AES-256-GCM encryption. On the hosted service the dashboard processes read them from tmpfs, never from disk.
 
-Docker:
+## Agent API
 
-```bash
-docker compose up -d          # http://localhost:4747, data in the rsd-data volume
-```
-
-If anyone else can reach the port, set `RSD_PASSWORD`. Without it, anyone on your network can open the dashboard and click in your games.
-
-Agents: see [docs/AGENTS.md](docs/AGENTS.md) for a drop-in guide (setup, game-client etiquette, activity reporting).
-
-## Configuration
-
-Everything is set with environment variables. Bun reads a `.env` file automatically, and [`.env.example`](.env.example) lists them all.
-
-| Variable | Default | |
-|---|---|---|
-| `RSD_MODE` | `local` | `hosted` turns on sign-ups and per-user accounts |
-| `PORT` | `4747` | |
-| `RSD_DATA_DIR` | `~/.rs-dashboard` | SQLite database, encryption key, browser profiles |
-| `RSD_SERVER` | `rs-sdk-demo.fly.dev` | default game server, same as `SERVER=` in `bot.env` |
-| `RSD_PASSWORD` | – | local mode: password for the web UI |
-| `RSD_ACCOUNTS` | – | `name:password[@server][!]`, comma separated |
-| `RS_SDK_DIR` | – | rs-sdk checkout to import accounts and logs from |
-| `RSD_ACCOUNTS_FILE` | – | JSON list of accounts ([example](accounts.example.json)) |
-| `CHROME_PATH` | auto | Chrome for game clients |
-| `RSD_FPS` / `RSD_QUALITY` / `RSD_IDLE_FPS` | 20 / 75 / 5 | live view rate, JPEG quality, unwatched render rate |
-| `RSD_SECRET` | generated | encrypts stored game passwords (hosted: set it and keep it) |
-| `RSD_MAX_ACCOUNTS`, `RSD_MAX_CLIENTS_PER_USER`, `RSD_MAX_CLIENTS` | 20 / 3 / 14 (hosted) | limits |
-
-## For agents and scripts
-
-Create a token under ⚙ Settings → API tokens. Pass it as `Authorization: Bearer <token>`. You can use the account id or the account name in paths.
-
-```bash
-# add an account (from your rs-sdk checkout, CI, an agent...)
-curl -X POST $DASH/api/accounts -H "Authorization: Bearer $RSD_TOKEN" -H 'content-type: application/json' \
-  -d '{"name":"mybot","password":"secret","server":"rs-sdk-demo.fly.dev","runClient":true}'
-
-# or send the bot.env as-is
-jq -Rs '{botEnv: ., runClient: true}' bots/mybot/bot.env | curl -X POST $DASH/api/accounts \
-  -H "Authorization: Bearer $RSD_TOKEN" -H 'content-type: application/json' -d @-
-
-# tell the dashboard what the bot is doing (shown on its card)
-curl -X POST $DASH/api/accounts/mybot/activity -H "Authorization: Bearer $RSD_TOKEN" \
-  -H 'content-type: application/json' -d '{"text":"Mining iron, 412 ore banked"}'
-
-curl $DASH/api/accounts/mybot -H "Authorization: Bearer $RSD_TOKEN"   # state as JSON
-```
+Use the bearer token from the skill.
 
 | Endpoint | |
 |---|---|
-| `GET /api/accounts` | all your accounts (summary cards) |
-| `POST /api/accounts` | add or update: `{name, password, server?, runClient?}` or `{botEnv, runClient?}` |
-| `GET /api/accounts/:id` | full view: skills, items, messages, client status, XP history |
-| `PATCH /api/accounts/:id` | `{password?, server?, runClient?}` |
-| `DELETE /api/accounts/:id` | remove from the dashboard (the game account is untouched) |
-| `POST /api/accounts/:id/activity` | `{text}` |
-| `POST /api/accounts/:id/say` · `GET /api/accounts/:id/chat` | in-game chat via the gateway |
-| `POST /api/accounts/:id/input` | `{ev:{kind:'click'|'move'|'key'|'text', ...}}` into the dashboard's client (x/y 0–1) |
-| `POST /api/accounts/:id/client/reload` | reload the game page |
-| `GET /api/accounts/:id/connect` | `bot.env` text for your rs-sdk checkout |
-| `WS /ws` | live account updates; `{"t":"watch","id":N}` streams JPEG frames |
+| `POST /_rsd/api/accounts` | add or update: `{name, password, server?, runClient?}` or `{botEnv, runClient?}` |
+| `GET /_rsd/api/accounts` · `PATCH`/`DELETE /_rsd/api/accounts/<name>` | list, change `{password, server, runClient}`, remove |
+| `POST /_rsd/api/accounts/<name>/activity` | `{text, goal?}`: the "Current activity" card |
+| `POST /_rsd/api/accounts/<name>/log` | `{lines: [...]}`: the activity log |
+| `GET /api/accounts`, `GET /api/state?account=<name>` | the dashboard's own data: levels, XP/h, skills, items, client status |
 
-## How it works
+## Configuration
 
-```
-your agent / scripts ──control──▶ rs-sdk gateway ◀──game client (browser tab, lite runner, or this dashboard)
-                                        ▲
-             dashboard ── HTTP: /state /status /chat /say (read-only + chat)
-                │  └── optional headless Chrome per account: /bot?bot=<name>&password=…  → JPEG frames, input
-                └──▶ browsers / phones (WebSocket)
-```
+These are environment variables; see `.env.example`. The main ones:
 
-- State comes from the gateway's HTTP endpoints. The public demo serves them on its direct port `:7443`, and the dashboard finds that automatically. Gateways without the HTTP API fall back to a read-only observer WebSocket.
-- Game passwords are stored with AES-256-GCM encryption. Sessions and API tokens are stored only as hashes.
-- A game client nobody is watching renders at 5 fps. Bots run at full speed regardless, because game logic doesn't depend on rendering.
+- `RSD_MODE` (`local`, or `hosted` for sign-ups)
+- `PORT`
+- `RSD_DATA_DIR`
+- `RSD_SERVER` (default game server)
+- `RSD_PASSWORD`
+- `RSD_ACCOUNTS`
+- `RS_SDK_DIR`
+- `RSD_ACCOUNTS_FILE`
+- `RSD_PUBLIC_URL`, `RSD_SECRET` and `RSD_ADMIN_EMAIL` (hosted)
+- Limits: `RSD_MAX_ACCOUNTS`, `RSD_MAX_CLIENTS_PER_USER`, `RSD_MAX_CLIENTS`
 
-## Self-hosting the public service
+The dashboard's own variables pass through to each per-user process: `FPS`, `QUALITY`, `IDLE_FPS`, `OBSERVERS`, `NO_HISCORES`, `PUPPETEER_EXECUTABLE_PATH`.
 
-[`infra/aws`](infra/aws) has the scripts behind dash.soko.tools. They set up one EC2 instance with Docker, Caddy for automatic HTTPS, and SQLite on its disk. See [infra/aws/README.md](infra/aws/README.md).
+## Hosting it yourself
+
+[`infra/aws`](infra/aws) contains the scripts behind dash.soko.tools: one EC2 instance running Docker, Caddy for HTTPS, and SQLite.
 
 ## Development
 
 ```bash
-bun run dev      # restart on change
-bun run check    # typecheck + tests
+bun run check                              # typecheck + tests (app/)
+bun test tools/dashboard                   # the dashboard's own tests (needs Chrome)
+bun scripts/sync-from-rs-sdk.ts ../rs-sdk  # pull dashboard changes from rs-sdk
 ```
 
-The source is small and has no build step: `src/server.ts` (HTTP/WS + auth), `src/runtime.ts` (per-account polling), `src/managed.ts` (headless client, frames, input), `src/gateway.ts`, `src/db.ts`, and `public/app.js` (UI).
-
-Please respect the rs-sdk demo server's rules. It's for bots, so use the remote control to unstick them, not to play by hand.
-
-MIT licensed.
+MIT licensed. Includes code from rs-sdk and the Lost City client (MIT, see `LICENSE-rs-sdk` and `server/webclient/LICENSE`).

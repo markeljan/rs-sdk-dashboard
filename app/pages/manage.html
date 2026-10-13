@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1012">
+<title>Accounts · RS-SDK Dashboard</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+/* Same tokens and controls as the dashboard (tools/dashboard/public/index.html) */
+:root {
+  --bg: #0e1012; --card: #16191c; --card2: #1c2024; --line: #272c31; --ink: #e8e6e1; --muted: #8e959c; --faint: #5c636a;
+  --gold: #e0a458; --good: #6fcf8a; --bad: #ef7a6a; --warn: #e8c35a; --blue: #7fb4ff; --bar: #2a3036;
+  --radius: 12px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--gold); }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.btn { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-height: 44px; touch-action: manipulation; text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:active { filter: brightness(1.3); }
+.btn.primary { background: #3a2f1c; border-color: #8a6a35; color: #f6dfb7; font-weight: 600; }
+.btn.danger { color: var(--bad); }
+.btn.sm { min-height: 32px; padding: 4px 10px; font-size: 12px; border-radius: 8px; }
+.btn.toggle.on { background: #1f4f80; border-color: #3f7fbf; }
+.btn:disabled { opacity: .5; cursor: default; }
+.hint { font-size: 12px; color: var(--muted); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.card h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.input { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 44px; }
+.input:focus { outline: 1px solid var(--gold); }
+textarea.input { font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 96px; }
+label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.check { display: flex; gap: 10px; align-items: flex-start; }
+.check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--gold); }
+.err { color: var(--bad); font-size: 13px; min-height: 1.2em; }
+pre.code { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; white-space: pre; max-height: 260px; -webkit-user-select: text; user-select: text; }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.top .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); text-decoration: none; }
+.top .brand img { width: 26px; height: 26px; border-radius: 6px; }
+main { max-width: 860px; margin: 0 auto; padding: 14px; display: grid; gap: 12px; }
+.auth { max-width: 380px; margin: 10vh auto 0; padding: 0 14px; display: grid; gap: 12px; }
+.auth .brand { display: flex; gap: 10px; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+.auth .brand img { width: 36px; height: 36px; border-radius: 8px; }
+.acct { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.acct:first-of-type { border-top: 0; }
+.acct .nm { font-weight: 700; }
+.tag { font-size: 11px; border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; color: var(--muted); margin-left: 6px; font-weight: 500; }
+.tag.managed { color: var(--gold); border-color: #6a5326; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.tabs button { background: transparent; border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; color: var(--muted); font-size: 12px; }
+.tabs button.on { color: var(--ink); border-color: var(--gold); }
+.hero h1 { margin: 6px 0 4px; font-size: 20px; }
+.hero p { margin: 0; color: var(--muted); }
+.copywrap { position: relative; }
+.copywrap .btn { position: absolute; top: 6px; right: 6px; }
+.grid2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+#toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50; max-width: calc(100% - 32px); }
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app"><p class="muted" style="text-align:center;margin-top:30vh">Loading…</p></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/_rsd/manage.js" type="module"></script>
+</body>
+</html>

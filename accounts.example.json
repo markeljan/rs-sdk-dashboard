@@ -1,6 +1,0 @@
-{
-  "accounts": [
-    { "name": "mybot", "password": "secret", "server": "rs-sdk-demo.fly.dev", "runClient": true },
-    { "name": "alt2", "botDir": "bots/alt2" }
-  ]
-}

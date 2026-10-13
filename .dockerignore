@@ -1,7 +1,9 @@
 node_modules
+server/webclient/node_modules
 data
 .git
 .env
-test
 infra
+docs
 *.md
+app/*.test.ts

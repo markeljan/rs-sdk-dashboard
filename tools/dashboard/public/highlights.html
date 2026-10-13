@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e1012">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<title>Fleet highlights</title>
+<style>
+:root {
+  --bg: #0e1012; --card: #16191c; --card2: #1c2024; --line: #272c31; --ink: #e8e6e1; --muted: #8e959c; --faint: #5c636a;
+  --gold: #e0a458; --good: #6fcf8a; --bad: #ef7a6a; --blue: #7fb4ff; --purple: #c39bff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); }
+a { color: var(--gold); text-decoration: none; } a:hover { text-decoration: underline; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); } .small { font-size: 12px; } .good { color: var(--good); } .bad { color: var(--bad); }
+header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 14px 0 10px; max-width: 1200px; margin: 0 auto; }
+header h1 { margin: 0; font-size: 20px; letter-spacing: .01em; }
+header h1 span { color: var(--gold); }
+header .sp { flex: 1; }
+main { max-width: 1200px; margin: 0 auto; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card h2 { margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.tiles { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.tile { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+.tile .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.tile .v { font-size: 22px; font-weight: 700; margin-top: 2px; }
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 5px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-size: 11px; color: var(--faint); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+tr:last-child td { border-bottom: none; }
+td.r, th.r { text-align: right; white-space: nowrap; }
+.item { font-weight: 600; }
+.tier0 { color: var(--purple); } .tier1 { color: var(--gold); } .tier2 { color: var(--blue); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--card2); color: var(--muted); }
+.chip.big { font-size: 13px; padding: 3px 10px; color: var(--ink); border-color: #4a3b22; background: #241d12; }
+.feed { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow: auto; }
+.feed .row { display: flex; gap: 8px; align-items: baseline; }
+.feed .when { flex: none; width: 92px; color: var(--faint); font-size: 12px; }
+ul.ms { margin: 0; padding-left: 18px; } ul.ms li { margin: 4px 0; }
+.empty { color: var(--faint); font-size: 12px; }
+.note { color: var(--faint); font-size: 11px; margin-top: 8px; }
+.tgl { font: 600 12px system-ui, sans-serif; color: var(--muted); background: var(--card2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+.tgl.on { color: var(--ink); border-color: #4a3b22; background: #241d12; }
+.live { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow: auto; }
+.live .ev { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.live .ev:hover { background: var(--card2); }
+.live .ev.new { animation: flash 2.4s ease-out; }
+.live .ic { flex: none; width: 22px; text-align: center; font-size: 16px; }
+.live .tx { flex: 1; min-width: 0; }
+.live .ago { flex: none; color: var(--faint); font-size: 12px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); margin-right: 6px; box-shadow: 0 0 0 0 #6fcf8a88; animation: pulse 2s infinite; vertical-align: 1px; }
+@keyframes flash { from { background: #3a2c14; } to { background: transparent; } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 #6fcf8a88; } 70% { box-shadow: 0 0 0 7px #6fcf8a00; } 100% { box-shadow: 0 0 0 0 #6fcf8a00; } }
+@media (prefers-reduced-motion: reduce) { .live .ev.new, .dot { animation: none; } }
+@media (max-width: 420px) { main { grid-template-columns: 1fr; } .tile .v { font-size: 19px; } .feed .when { width: 74px; } }
+</style>
+</head>
+<body>
+<header>
+  <a href="/">◂ Dashboard</a>
+  <h1><span>★</span> Fleet highlights</h1>
+  <span class="sp"></span>
+  <button class="tgl" id="tgl" type="button" title="Pop-up toasts for big drops and maxed accounts (saved on this device)">🔔 Pop-ups</button>
+  <span class="small muted num" id="at">Loading…</span>
+</header>
+<main id="main"><section class="card wide" id="liveCard"><h2><span><span class="dot"></span>Live · big moments</span><span class="small">tap one to watch that account</span></h2><div class="live" id="live"><div class="empty">Waiting for the first big drop…</div></div></section></main>
+<script src="/toasts.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const gp = n => { if (n == null || !Number.isFinite(n)) return '—'; const a = Math.abs(n), s = n < 0 ? '−' : ''; return s + (a >= 1e9 ? (a / 1e9).toFixed(2) + 'B' : a >= 1e6 ? (a / 1e6).toFixed(a >= 1e8 ? 0 : 1) + 'M' : a >= 1e3 ? Math.round(a / 1e3) + 'k' : Math.round(a)); };
+const int = n => (n ?? 0).toLocaleString('en-US');
+const when = t => { if (!t) return ''; const d = new Date(t); return isNaN(d) ? t : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); };
+const tier = item => /left half|chainbody/i.test(item) ? 'tier0' : /^dragon/i.test(item) || /lava/i.test(item) ? 'tier1' : /dragonstone/i.test(item) ? 'tier2' : '';
+const pretty = m => m.replace(/^m[A-Z]?\d+-/, '').replace(/-/g, ' ');
+const ago = t => { const s = Math.max(0, (Date.now() - Date.parse(t)) / 1000); return !Number.isFinite(s) ? '' : s < 45 ? 'just now' : s < 3600 ? Math.round(s / 60) + 'm ago' : s < 86400 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };
+const acctLink = a => `<a href="/?account=${encodeURIComponent(a)}">${esc(a)}</a>`;
+const card = (title, body, cls = '', aside = '') => `<section class="card ${cls}"><h2><span>${title}</span><span class="small">${aside}</span></h2>${body}</section>`;
+const table = (cols, rows) => rows.length ? `<table><tr>${cols.map(c => `<th class="${c.r ? 'r' : ''}">${c.h}</th>`).join('')}</tr>${rows.map(r => `<tr>${cols.map(c => `<td class="${c.r ? 'r num' : ''}">${c.f(r)}</td>`).join('')}</tr>`).join('')}</table>` : '<div class="empty">Nothing logged yet.</div>';
+
+function render(d) {
+  const t = d.totals, a = d.achievements, out = [];
+  out.push(card('At a glance', `<div class="tiles">
+    <div class="tile"><div class="l">Fleet wealth</div><div class="v num">${gp(t.wealth)}</div><div class="small muted">${t.accounts} accounts</div></div>
+    <div class="tile"><div class="l">Rare drops</div><div class="v num">${int(t.rareDrops)}</div><div class="small muted">logged across the fleet</div></div>
+    <div class="tile"><div class="l">Loot picked up</div><div class="v num">${gp(t.lootValue)}</div><div class="small muted">${int(t.lootPickups)} pickups</div></div>
+    <div class="tile"><div class="l">Maxed (99 all)</div><div class="v num">${t.maxed}</div><div class="small muted">${a.maxed.map(esc).join(', ') || '—'}</div></div>
+    <div class="tile"><div class="l">Fire giant kills</div><div class="v num">${int(t.brimKills)}</div><div class="small muted">Brimhaven farm</div></div>
+    <div class="tile"><div class="l">Kalphite Queen</div><div class="v num">${int(t.kqKills)}</div><div class="small muted">team kills</div></div>
+  </div>`, 'wide'));
+
+  const hl = d.items.filter(i => i.headline);
+  out.push(card('Best items found', table([
+    { h: 'Item', f: r => `<span class="item ${tier(r.item)}">${esc(r.item)}</span>` },
+    { h: 'Found', r: 1, f: r => int(r.n) },
+    { h: 'By', f: r => `<span class="small muted">${r.accts.slice(0, 6).map(esc).join(', ')}${r.accts.length > 6 ? ` +${r.accts.length - 6}` : ''}</span>` },
+  ], hl), '', hl.some(i => /left half/i.test(i.item)) ? '' : 'no left half yet'));
+
+  out.push(card('Latest big drops', d.best.length ? `<div class="feed">${d.best.map(b =>
+    `<div class="row"><span class="when num" title="${esc(when(b.t))}">${ago(b.t)}</span><span><span class="item ${tier(b.item)}">${esc(b.item)}</span> <span class="muted">· ${acctLink(b.acct)} · ${esc(b.npc)}</span></span></div>`).join('')}</div>` : '<div class="empty">Nothing yet.</div>'));
+
+  out.push(card('Richest accounts', table([
+    { h: 'Account', f: r => acctLink(r.acct) },
+    { h: 'Wealth', r: 1, f: r => gp(r.total) },
+    { h: '24 h', r: 1, f: r => `<span class="${r.d24 > 0 ? 'good' : r.d24 < 0 ? 'bad' : 'muted'}">${r.d24 > 0 ? '+' : ''}${gp(r.d24)}</span>` },
+  ], d.wealth.slice(0, 10)) + '<div class="note">24 h change includes loot and coins moved between accounts.</div>'));
+
+  out.push(card('Top earners · GP/h', table([
+    { h: 'Account', f: r => acctLink(r.acct) },
+    { h: 'Last hour', r: 1, f: r => gp(r.gphRecent) },
+    { h: 'Overall', r: 1, f: r => gp(r.gphOverall) },
+  ], d.earners.filter(e => e.gphRecent > 0 || e.gphOverall > 0).slice(0, 10)), '', 'money accounts'));
+
+  out.push(card('Best money methods', table([
+    { h: 'Method', f: r => `<span title="${esc(r.method)}">${esc(pretty(r.method))}</span>` },
+    { h: 'Avg GP/h', r: 1, f: r => gp(r.avg) },
+    { h: 'Best', r: 1, f: r => gp(r.best) },
+    { h: 'Runs', r: 1, f: r => `${int(r.runs)}<span class="muted small"> / ${r.accts}</span>` },
+  ], d.methods.slice(0, 10)) + '<div class="note">Money-lab runs of 15+ metered minutes; runs / accounts.</div>'));
+
+  out.push(card('Achievements', `
+    <div class="chips" style="margin-bottom:10px">${a.maxed.map(m => `<span class="chip big">🏆 ${esc(m)} · 99 all</span>`).join('')}</div>
+    <ul class="ms">${a.milestones.map(m => `<li><span class="muted small num">${esc(m.at)}</span> ${esc(m.text)}</li>`).join('')}
+      ${a.clues.map(c => `<li>${acctLink(c.acct)} solved <b class="num">${int(c.done)}</b> clue scrolls</li>`).join('')}</ul>
+    <div class="note">Highest total levels</div>
+    <div class="chips">${a.topLevels.map(l => `<span class="chip"><span style="color:var(--ink)">${esc(l.acct)}</span> ${int(l.totalLevel)}</span>`).join('')}</div>`));
+
+  const f = d.farms;
+  out.push(card('Groups running', table([
+    { h: 'Group', f: r => `<b>${esc(r.group)}</b><div class="small muted">${esc(r.what)}</div>` },
+    { h: 'Accts', r: 1, f: r => int(r.accounts) },
+  ], f.groups) + (f.brim ? `<div class="note">Brimhaven fire giants: ${f.brim.accounts} accounts, ${int(f.brim.kills)} kills, ${f.brim.deaths} deaths · top ${f.brim.top.map(x => `${esc(x.acct)} ${int(x.kills)}`).join(', ')}</div>` : '')));
+
+  out.push(card('Biggest single pickups', table([
+    { h: 'Item', f: r => `<span class="item ${tier(r.item)}">${esc(r.item)}</span>${r.n > 1 ? ` <span class="muted">×${int(r.n)}</span>` : ''}` },
+    { h: 'Value', r: 1, f: r => gp(r.value) },
+    { h: 'Who', f: r => `<span class="small">${acctLink(r.acct)} <span class="muted">${esc(r.npc)}</span></span>` },
+  ], d.topValue.slice(0, 10)) + '<div class="note">Values as logged at pickup (shop/alch value).</div>'));
+
+  const rest = d.items.filter(i => !i.headline);
+  out.push(card('Other rare drops', rest.length ? `<div class="chips">${rest.map(i => `<span class="chip"><span style="color:var(--ink)">${esc(i.item)}</span> ×${int(i.n)}</span>`).join('')}</div>` : '<div class="empty">None.</div>', 'wide'));
+
+  const live = $('liveCard');
+  $('main').innerHTML = out.join('');
+  $('main').children[0].after(live);
+  $('at').textContent = 'Updated ' + new Date(d.at).toLocaleTimeString();
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/highlights', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status + ' ' + r.statusText);
+    render(await r.json());
+  } catch (e) { $('at').textContent = 'Could not load: ' + e.message; }
+}
+load();
+setInterval(() => { if (!document.hidden) load(); }, 60_000);
+
+// ---- live feed + pop-ups (toasts.js): every account here, a tap opens it on the dashboard
+const evs = [];
+const ICON = ['🛡️', '🐉', '💎', '⭐'];
+function renderLive(fresh = new Set()) {
+  if (!evs.length) return;
+  $('live').innerHTML = evs.map(e => {
+    const ic = e.kind === 'maxed' ? '🏆' : e.kind === 'pickup' ? '💰' : ICON[e.tier] ?? '⭐';
+    const what = e.kind === 'maxed' ? `reached <span class="item tier0">99 in every skill</span>`
+      : `${e.kind === 'pickup' ? 'looted' : 'got'} <span class="item ${tier(e.item)}">${esc(e.item)}</span>${e.n > 1 ? ` <span class="muted">×${int(e.n)}</span>` : ''}${e.kind === 'pickup' && e.value ? ` <span class="muted">${gp(e.value)} gp</span>` : ''}`;
+    return `<div class="ev${fresh.has(e.seq) ? ' new' : ''}" data-acct="${esc(e.acct)}"><span class="ic">${ic}</span><span class="tx"><b>${esc(e.acct)}</b> ${what}${e.npc ? ` <span class="muted small">· ${esc(e.npc)}</span>` : ''}</span><span class="ago num" title="${esc(when(e.t))}">${ago(e.t)}</span></div>`;
+  }).join('');
+}
+$('live').addEventListener('click', ev => { const r = ev.target.closest('.ev'); if (r && !ev.target.closest('a')) location.href = '/?account=' + encodeURIComponent(r.dataset.acct); });
+const tgl = $('tgl');
+const paintTgl = () => { const on = FleetToasts.enabled(); tgl.classList.toggle('on', on); tgl.textContent = on ? '🔔 Pop-ups on' : '🔕 Pop-ups off'; };
+tgl.addEventListener('click', () => { FleetToasts.setEnabled(!FleetToasts.enabled()); paintTgl(); });
+paintTgl();
+FleetToasts.onEvents((list, first) => {
+  if (!list.length) return;
+  evs.unshift(...list.slice().reverse());
+  evs.splice(40);
+  renderLive(first ? new Set() : new Set(list.map(e => e.seq)));
+});
+setInterval(() => renderLive(), 30_000); // keep the "Nm ago" fresh
+FleetToasts.init();
+</script>
+</body>
+</html>

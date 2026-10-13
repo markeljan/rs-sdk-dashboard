@@ -1,0 +1,5 @@
+{
+  "name": "rsmod-pathfinder",
+  "main": "rsmod-pathfinder.js",
+  "types": "rsmod-pathfinder.d.ts"
+}

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#262b31"/><stop offset="1" stop-color="#0e1012"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6cf86"/><stop offset=".55" stop-color="#e0a458"/><stop offset="1" stop-color="#a86f2c"/>
+    </linearGradient>
+    <linearGradient id="goldEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b97d36"/><stop offset="1" stop-color="#6e4518"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- coin stack -->
+  <ellipse cx="256" cy="352" rx="132" ry="40" fill="url(#goldEdge)"/>
+  <rect x="124" y="312" width="264" height="40" fill="url(#goldEdge)"/>
+  <ellipse cx="256" cy="312" rx="132" ry="40" fill="url(#gold)"/>
+  <ellipse cx="256" cy="300" rx="132" ry="40" fill="url(#goldEdge)"/>
+  <rect x="124" y="262" width="264" height="38" fill="url(#goldEdge)"/>
+  <ellipse cx="256" cy="262" rx="132" ry="40" fill="url(#gold)"/>
+  <!-- standing coin -->
+  <circle cx="256" cy="196" r="104" fill="url(#goldEdge)"/>
+  <circle cx="256" cy="190" r="100" fill="url(#gold)"/>
+  <circle cx="256" cy="190" r="78" fill="none" stroke="#a86f2c" stroke-width="8" opacity=".75"/>
+  <text x="256" y="226" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="112" fill="#5a3712">S</text>
+  <!-- live dot -->
+  <circle cx="372" cy="118" r="26" fill="#0e1012"/>
+  <circle cx="372" cy="118" r="17" fill="#6fcf8a"/>
+</svg>

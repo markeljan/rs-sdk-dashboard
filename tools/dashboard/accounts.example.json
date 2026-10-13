@@ -1,0 +1,19 @@
+{
+  "accounts": [
+    {
+      "name": "mybot",
+      "botDir": "bots/mybot",
+      "procMatch": ["rs-sdk/bots/mybot/"],
+      "client": "managed",
+      "autostart": true
+    },
+    {
+      "name": "myfarmer",
+      "botDir": "bots/myfarmer",
+      "procMatch": ["rs-sdk/bots/myfarmer/"],
+      "client": "managed",
+      "autostart": true,
+      "money": true
+    }
+  ]
+}
