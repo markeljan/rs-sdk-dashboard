@@ -1,0 +1,13 @@
+# Self-host the dashboard with Docker:  docker compose up -d   ->  http://localhost:4747
+# Put settings in .env next to this file (see .env.example).
+services:
+  dashboard:
+    build: .
+    image: ghcr.io/markeljan/rs-sdk-dashboard:latest
+    restart: unless-stopped
+    ports: ["4747:4747"]
+    env_file: [{ path: .env, required: false }]
+    volumes: ["rsd-data:/data"]
+    shm_size: 1gb
+volumes:
+  rsd-data:

@@ -1,0 +1,23 @@
+# Hosted service: the dashboard behind Caddy (automatic HTTPS). Used by deploy.sh on the server.
+services:
+  dashboard:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RSD_MODE: hosted
+      RSD_DATA_DIR: /data
+      RSD_TRUST_PROXY: "true"
+    volumes: ["/opt/rs-dashboard/data:/data"]
+    shm_size: 2gb
+    expose: ["4747"]
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/rs-dashboard/caddy:/data
+    depends_on: [dashboard]

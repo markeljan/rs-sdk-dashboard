@@ -1,0 +1,27 @@
+{
+  "name": "rs-sdk-dashboard",
+  "version": "0.1.0",
+  "description": "Web dashboard for rs-sdk bot accounts: live game view, remote control from your phone, stats and XP tracking. Run it locally or use the hosted service.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "rs-dashboard": "src/cli.ts" },
+  "files": ["src", "public", "README.md", "LICENSE", ".env.example", "accounts.example.json"],
+  "scripts": {
+    "start": "bun src/cli.ts start",
+    "dev": "bun --watch src/cli.ts start",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit && bun test"
+  },
+  "engines": { "bun": ">=1.1.0" },
+  "keywords": ["rs-sdk", "runescape", "bot", "dashboard", "agents"],
+  "repository": { "type": "git", "url": "https://github.com/markeljan/rs-sdk-dashboard.git" },
+  "dependencies": {
+    "@puppeteer/browsers": "^2.10.0",
+    "puppeteer-core": "^24.10.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}
