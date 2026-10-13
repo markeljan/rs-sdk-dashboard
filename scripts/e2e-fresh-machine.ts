@@ -50,7 +50,7 @@ await runScript(async ({ bot, sdk }) => {
   const s = sdk.getState();
   const x = s?.player?.worldX ?? 0, z = s?.player?.worldZ ?? 0;
   console.log('E2E start', x, z, 'inGame', s?.inGame);
-  const r = await bot.walkTo(x + 3, z + 1);
+  const r = x > 3227 ? await bot.walkTo(3222, 3218) : await bot.walkTo(3232, 3218); // Lumbridge spawn <-> 10 tiles east
   const s2 = sdk.getState();
   console.log('E2E end', s2?.player?.worldX, s2?.player?.worldZ, 'walk', JSON.stringify(r).slice(0, 80));
 }, { timeout: 90000 });
