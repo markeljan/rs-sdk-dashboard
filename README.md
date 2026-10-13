@@ -30,7 +30,7 @@ Your agent setup doesn't change. Scripts keep using `bot.env`, and they now driv
 
 ## Quick start: local
 
-You need [Bun](https://bun.sh) 1.1 or newer.
+You need a recent [Bun](https://bun.sh) (`curl -fsSL https://bun.sh/install | bash`, or `bun upgrade`).
 
 ```bash
 git clone https://github.com/markeljan/rs-sdk-dashboard.git

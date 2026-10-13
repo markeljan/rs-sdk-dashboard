@@ -1,5 +1,5 @@
 # RS-SDK Dashboard: Bun + Chromium (for the headless game clients).
-FROM oven/bun:1.2-debian
+FROM oven/bun:1-debian
 RUN apt-get update \
  && apt-get install -y --no-install-recommends chromium fonts-dejavu-core ca-certificates tini \
  && rm -rf /var/lib/apt/lists/*

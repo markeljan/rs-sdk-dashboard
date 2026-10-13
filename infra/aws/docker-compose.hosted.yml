@@ -1,7 +1,7 @@
 # Hosted service: the dashboard behind Caddy (automatic HTTPS). Used by deploy.sh on the server.
 services:
   dashboard:
-    build: ..
+    build: ../..
     restart: unless-stopped
     env_file: .env
     environment:
