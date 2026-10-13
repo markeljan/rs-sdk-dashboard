@@ -16,7 +16,7 @@ c=$(docker ps --filter name=dashboard --format '{{.Names}}' | head -1)
 docker cp /opt/rs-dashboard/src/tools/dashboard/. "$c:/app/tools/dashboard/"
 docker cp /opt/rs-dashboard/src/app/. "$c:/app/app/"
 if [ -n "${FRONT:-}" ]; then
-  docker exec "$c" pkill -TERM -f "app/cli.ts start" || true
+  docker exec "$c" pkill -TERM -f "^bun app/cli.ts start" || true   # the bun process only, not the restart loop around it
   echo "restarted the front server in $c (dashboards detach and reattach)"
 else
   for p in $(docker exec "$c" pgrep -f tools/dashboard/server.ts || true); do docker exec "$c" kill -TERM "$p"; done
