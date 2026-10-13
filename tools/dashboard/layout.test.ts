@@ -66,6 +66,7 @@ for (const [w, h] of [[320, 568], [360, 640], [375, 667], [390, 844], [430, 932]
         expect(g.scrollWidth).toBeLessThanOrEqual(g.width);
         expect(g.second.bottom).toBeLessThanOrEqual(g.pill.bottom);
         expect(g.pill.bottom).toBeLessThanOrEqual(g.bar.bottom);
+        expect(await page.$eval('.hqpill .ast', e => e.scrollWidth <= e.clientWidth)).toBe(true);
         expect(g.cur.h).toBeLessThanOrEqual(38);
         expect(g.card.w).toBeGreaterThan(w! > h! ? 220 : w! - 40);
         await page.click('#activityDetails summary');
@@ -93,6 +94,7 @@ for (const dynamic of [false, true]) for (const [w, h] of [[320, 568], [390, 664
             }).map(e => e.className + ':' + (e as HTMLElement).dataset.region);
         });
         expect(invalid).toEqual([]);
+        expect(await page.$eval('#fsCursor', e => !e.getBoundingClientRect().width || e.scrollWidth <= e.clientWidth)).toBe(true);
         if (dynamic && touch) expect(await page.$eval('.fsacct', e => {
             if ((e as HTMLElement).hidden) return true;
             const r = e.getBoundingClientRect(), p = document.querySelector('.fspad')!.getBoundingClientRect();

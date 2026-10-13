@@ -195,6 +195,8 @@ body.mobile:not(.fs) #cardActivity { flex: 1 0 160px; min-height: 160px; display
 body.mobile:not(.fs) #cardActivity > pre.log { flex: 1 1 auto; min-height: 48px; max-height: none; }
 body.mobile:not(.fs) .acct { flex-basis: 172px; width: 172px; min-height: 56px; padding: 6px 9px; border-radius: 9px; }
 body.mobile:not(.fs) .acct .aa, body.mobile:not(.fs) .acct .tags, body.mobile:not(.fs) .acct .ls { display: none; }
+body.mobile:not(.fs) .acct.hqpill { flex-basis: 190px; width: 190px; }
+body.mobile:not(.fs) .ctlbtns .ctlicons .btn { font-size: 18px; }
 body.mobile:not(.fs) .acct.litetog { flex-basis: auto; width: auto; }
 body.mobile:not(.fs) .acctbar { gap: 6px; padding-left: 8px; padding-right: 8px; }
 body.mobile:not(.fs) .pad { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 44px); gap: 4px; }
@@ -479,7 +481,7 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
         </div>
         <div class="fsside">
           <!-- every control strip reads left to right: Pause, Settings, Fullscreen (cursor mode, phones only, first) -->
-          <button class="btn" id="fsCursor" type="button" title="Cursor mode">⌖ Cursor</button>
+          <button class="btn" id="fsCursor" type="button" aria-label="Cursor mode" aria-pressed="false" title="Cursor mode">⌖</button>
           <button class="btn pause" id="fsPause" type="button" title="Pause automations">⏸</button>
           <button class="btn" id="fsMore" type="button" title="Settings">⚙</button>
           <button class="btn" id="fsExit" type="button" title="Exit fullscreen">✕</button>
@@ -1335,6 +1337,7 @@ body.fs .stage.ovl:not(.beta) canvas#view { height: 100%; aspect-ratio: auto; }
     try { localStorage.setItem('dash.cursorMode', on ? '1' : '0'); } catch {}
     $('btnCursor').classList.toggle('on', on); $('fsCursor').classList.toggle('on', on);
     $('btnCursor').textContent = on ? 'Cursor mode ✓' : 'Cursor mode';
+    $('fsCursor').setAttribute('aria-pressed', String(on));
     $('stage').classList.toggle('cursor', on);
     document.body.classList.toggle('cursor-on', on); // not fullscreen: the activity card becomes the touchpad
     renderCursor();
