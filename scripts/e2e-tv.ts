@@ -23,6 +23,7 @@ try {
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
     await page.waitForSelector('.tv-panel', { timeout: 30000 });
     await page.waitForFunction(() => document.querySelector('.tv-signal')?.textContent?.includes('LIVE'), { timeout: 20000 });
+    await page.waitForFunction(() => document.querySelectorAll('.minimap-images img').length > 0, { timeout: 30000 });
     await new Promise(r => setTimeout(r, 2500));
     assert(await page.evaluate(() => [...document.querySelectorAll('canvas')].every(c => c.width === 1440 && c.height === 900)), '3D and overlay canvases fill the viewport');
     await page.screenshot({ path: '/tmp/rs-tv-desktop.png' });

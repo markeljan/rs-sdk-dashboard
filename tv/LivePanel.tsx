@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RankingsPanel } from "./RankingsPanel";
+import { PlayerDetails } from "./PlayerDetails";
+import { ChatPanel } from "./ChatPanel";
 import { MapViewer } from "../mapviewer/MapViewer";
 import { PLACES, placeAt, Shot } from "./director";
 import "./LivePanel.css";
@@ -59,7 +62,7 @@ export function LivePanel({ mapViewer }: { mapViewer: MapViewer }): JSX.Element 
     const live = mapViewer.live;
     const roster = live?.world.rosterPlayers;
     const players = useMemo(() => (roster ?? []).filter(p => p[1].toLowerCase().includes(search.toLowerCase())).sort((a,b) => a[1].localeCompare(b[1])), [roster, search]);
-    const follow = (name: string) => { setMode("follow"); live?.goToPlayer(name, mapViewer.camera); };
+    const follow = (name: string) => { setMode("follow"); live?.goToPlayer(name, mapViewer.camera); setTab("account"); };
     const auto = () => { shotKey.current = ""; setMode("auto"); };
     const jump = (x: number, z: number) => {
         setMode("free"); live?.unfollow();
@@ -74,10 +77,13 @@ export function LivePanel({ mapViewer }: { mapViewer: MapViewer }): JSX.Element 
         {!cinema && <aside className={"tv-panel " + (open ? "" : "tv-collapsed")}>
             <button className="tv-panel-heading" onClick={() => setOpen(!open)}>Explore the world <span>{open ? "−" : "+"}</span></button>
             {open && <>
-                <div className="tv-modes"><button className={mode === "auto" ? "selected" : ""} onClick={auto}>◉ Auto TV</button><button className={mode === "follow" ? "selected" : ""} onClick={() => { setMode("follow"); if (!live?.followName) setTab("players"); }}>Follow</button><button className={mode === "free" ? "selected" : ""} onClick={() => { setMode("free"); live?.unfollow(); }}>Free cam</button></div>
-                <nav className="tv-tabs">{[["onair","On air"],["players","Players"],["places","Places"]].map(([id,label]) => <button key={id} className={tab === id ? "selected" : ""} onClick={() => setTab(id)}>{label}</button>)}</nav>
+                <div className="tv-modes"><button className={mode === "auto" ? "selected" : ""} onClick={auto}>◉ Auto TV</button><button className={mode === "follow" ? "selected" : ""} onClick={() => { setMode("follow"); setTab(live?.followName ? "account" : "players"); }}>Follow</button><button className={mode === "free" ? "selected" : ""} onClick={() => { setMode("free"); live?.unfollow(); }}>Free cam</button></div>
+                <nav className="tv-tabs">{[["onair","On air"],["players","Players"],["rankings","Rankings"],["places","Places"],["account","Player"],["chat","Chat"]].map(([id,label]) => <button key={id} className={tab === id ? "selected" : ""} onClick={() => setTab(id)}>{label}</button>)}</nav>
                 {tab === "onair" && <div className="tv-content"><p className="tv-muted">One camera, the whole server. The director changes scenes every 35 seconds, favoring combat, bosses, busy places and public chat.</p><div className="tv-section-label">AROUND THE WORLD</div>{broadcast?.upcoming.map(s => <button className="tv-story" key={s.id} onClick={() => s.follow ? follow(s.follow) : jump(s.x,s.z)}><strong>{s.name}</strong><small>{s.reason}</small></button>)}<p className="tv-muted tv-footnote">Live public world data. Camera controls affect only your view.</p></div>}
                 {tab === "players" && <><input className="tv-search" aria-label="Find a player" placeholder={`Search ${players.length.toLocaleString()} online players…`} value={search} onChange={e => { setSearch(e.target.value); setLimit(60); }} onKeyDown={e => { if (e.key === "Enter" && players[0]) follow(players[0][1]); }}/><div className="tv-content tv-players" onScroll={e => { const t = e.currentTarget; if (t.scrollTop + t.clientHeight > t.scrollHeight - 100) setLimit(n => n + 60); }}>{players.slice(0,limit).map(p => <button className={"tv-player " + (p[1] === live?.followName ? "selected" : "")} key={p[0]} onClick={() => follow(p[1])}><span>{p[1]}<small>{placeAt(p[2],p[3])}</small></span><em>Lv {p[5]}</em></button>)}{!players.length && <p className="tv-muted">No matching online players.</p>}</div></>}
+                {tab === "rankings" && <RankingsPanel follow={follow}/>}
+                {tab === "account" && <PlayerDetails name={live?.followName} combat={roster?.find(p => p[1] === live?.followName)?.[5]} position={(() => { const p = roster?.find(p => p[1] === live?.followName); return p ? placeAt(p[2],p[3]) : undefined; })()}/>}
+                {tab === "chat" && <ChatPanel/>}
                 {tab === "places" && <div className="tv-content"><p className="tv-muted">Jump instantly. Open the map in the top left to explore anywhere; double-click a tile or select a player marker.</p>{PLACES.map(p => <button className="tv-story" key={p.name} onClick={() => jump(p.x,p.z)}><strong>{p.name}</strong><small>{p.x}, {p.z}</small></button>)}</div>}
             </>}
         </aside>}

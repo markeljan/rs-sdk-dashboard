@@ -8,7 +8,7 @@ if [ ! -f "$ROOT/tv-build/index.html" ]; then
   echo 'Build first: bun scripts/build-tv.ts' >&2
   exit 1
 fi
-ssh -i "$KEY_FILE" "ubuntu@$HOST" 'mkdir -p /opt/rs-dashboard/tv/app/tv /opt/rs-dashboard/tv/site'
+ssh -i "$KEY_FILE" "ubuntu@$HOST" 'mkdir -p /opt/rs-dashboard/tv/app/tv /opt/rs-dashboard/tv/site /opt/rs-dashboard/tv/chat-data'
 rsync -az --delete -e "ssh -i $KEY_FILE" "$ROOT/tv-build/" "ubuntu@$HOST:/opt/rs-dashboard/tv/site/"
 rsync -az -e "ssh -i $KEY_FILE" "$ROOT/app/tv-server.ts" "ubuntu@$HOST:/opt/rs-dashboard/tv/app/"
 rsync -az --delete -e "ssh -i $KEY_FILE" --exclude '*.tsx' --exclude '*.css' "$ROOT/app/tv/" "ubuntu@$HOST:/opt/rs-dashboard/tv/app/tv/"
@@ -18,6 +18,8 @@ image=$(docker inspect aws-dashboard-1 --format '{{.Config.Image}}')
 docker rm -f rs-tv >/dev/null 2>&1 || true
 docker run -d --name rs-tv --restart unless-stopped --network aws_default \
   --memory 512m --cpus 1 --read-only --tmpfs /tmp:rw,noexec,nosuid,size=32m \
+  -v /opt/rs-dashboard/tv/chat-data:/chat-data:rw \
+  -e TV_CHAT_DB=/chat-data/chat.sqlite -e TV_TRUST_PROXY=1 \
   -v /opt/rs-dashboard/tv/app:/app/app:ro -v /opt/rs-dashboard/tv/site:/site:ro \
   -e PORT=4750 -e HOST=0.0.0.0 -e TV_SITE_DIR=/site \
   --health-cmd='bun -e "const r=await fetch(\"http://127.0.0.1:4750/health\");if(!(await r.json()).ok)process.exit(1)"' \

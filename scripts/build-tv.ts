@@ -19,7 +19,7 @@ if (!existsSync(source)) {
 }
 const actual = (await new Response(Bun.spawn(['git', 'rev-parse', 'HEAD'], { cwd: source, stdout: 'pipe' }).stdout).text()).trim();
 if (actual !== revision) throw new Error(`Expected renderer ${revision}, got ${actual}`);
-for (const name of ['LivePanel.tsx', 'LivePanel.css', 'director.ts']) cpSync(join(root, name === 'director.ts' ? 'app/tv' : 'tv', name), join(source, 'src/live', name));
+for (const name of ['LivePanel.tsx', 'LivePanel.css', 'RankingsPanel.tsx', 'PlayerDetails.tsx', 'ChatPanel.tsx', 'director.ts', 'hiscores.ts']) cpSync(join(root, ['director.ts', 'hiscores.ts'].includes(name) ? 'app/tv' : 'tv', name), join(source, 'src/live', name));
 const controller = join(source, 'src/live/LiveController.ts');
 const controllerSource = readFileSync(controller, 'utf8');
 if (!controllerSource.includes('configured === "TV_RELAY"')) writeFileSync(controller, controllerSource.replace('return configured;', 'return configured === "TV_RELAY" ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/worldfeed` : configured;'));
@@ -31,7 +31,8 @@ if (!liveSource.includes('CustomEvent("tv-mode"')) {
     writeFileSync(controller, liveSource);
 }
 const indexPath = join(source, 'public/index.html');
-writeFileSync(indexPath, readFileSync(indexPath, 'utf8').replace('<title>RS World</title>', '<title>RS-SDK TV · Live from Gielinor</title>'));
+cpSync(join(root, 'tv/index.html'), indexPath);
+cpSync(join(root, 'tv/public'), join(source, 'public'), { recursive: true });
 const containerPath = join(source, 'src/mapviewer/MapViewerContainer.tsx');
 let containerSource = readFileSync(containerPath, 'utf8');
 if (!containerSource.includes('CustomEvent("tv-mode"')) {

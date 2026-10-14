@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, test } from 'bun:test';
+import { skillBoard, valueBoard, profile } from './test-fixtures/tv-hiscores';
 import { Director } from './tv/director';
 import { regionFor, SceneSnapshot } from './tv/relay';
 
@@ -44,8 +45,8 @@ describe('TV scene relay', () => {
 });
 
 // Exercise the real server against a local feed; never touch an account or production.
-const feed = Bun.serve({port:0,hostname:'127.0.0.1',fetch(req,srv){ return srv.upgrade(req) ? undefined : new Response('no'); },websocket:{open(ws){ws.send(JSON.stringify({t:'hello',v:1,rev:289,tick:1,tickMs:300,players:1}));},message(ws,raw){const m=JSON.parse(String(raw));if(m.t==='roster')ws.send(JSON.stringify({t:'roster',k:1,p:[[1,'PublicPlayer',3222,3218,0,50]],npcs:1}));if(m.t==='sub')ws.send(JSON.stringify({t:'tick',k:2,ms:300,p:[{i:1,f:1,x:3222,z:3218,l:0,ap:'body'}]}));}}});
-const proc = Bun.spawn([process.execPath,'app/tv-server.ts'],{env:{...process.env,PORT:'0',TV_WORLD_FEED:`ws://127.0.0.1:${feed.port}`},stdout:'pipe',stderr:'pipe'});
+const feed = Bun.serve({port:0,hostname:'127.0.0.1',fetch(req,srv){ const p=new URL(req.url).pathname;if(p.startsWith('/hiscores'))return new Response(p.includes('/player/')?profile:p.endsWith('/bank')||p.endsWith('/outfit')?valueBoard:skillBoard);return srv.upgrade(req) ? undefined : new Response('no'); },websocket:{open(ws){ws.send(JSON.stringify({t:'hello',v:1,rev:289,tick:1,tickMs:300,players:1}));},message(ws,raw){const m=JSON.parse(String(raw));if(m.t==='roster')ws.send(JSON.stringify({t:'roster',k:1,p:[[1,'Public Hero',3222,3218,0,50]],npcs:1}));if(m.t==='sub')ws.send(JSON.stringify({t:'tick',k:2,ms:300,p:[{i:1,f:1,x:3222,z:3218,l:0,ap:'body'}]}));}}});
+const proc = Bun.spawn([process.execPath,'app/tv-server.ts'],{env:{...process.env,PORT:'0',TV_CHAT_DB:':memory:',TV_HISCORES_ORIGIN:`http://127.0.0.1:${feed.port}`,TV_WORLD_FEED:`ws://127.0.0.1:${feed.port}`},stdout:'pipe',stderr:'pipe'});
 const reader=proc.stdout.getReader();
 let serverUrl='';
 for(let i=0;i<20 && !serverUrl;i++){const {value,done}=await reader.read();if(done)break;serverUrl=/listening on (http:\/\/[^\s]+)/.exec(new TextDecoder().decode(value))?.[1]??'';}
@@ -60,3 +61,22 @@ test('public TV health, safe routes, and shared live scene snapshots',async()=>{
     try { const result = await Promise.all([collect(a),collect(b)]); expect(result.every(frames=>frames.some(f=>f.p?.[0]?.ap==='body'))).toBe(true); const info=await(await fetch(serverUrl+'health')).json();expect(info.upstreamConnections).toBe(4);expect(info.viewers).toBe(2); }
     finally {a.close();b.close();}
 },8000);
+
+test('TV rankings and player routes use public scores and live online names',async()=>{
+    const result=await(await fetch(serverUrl+'api/rankings?category=bank&online=1')).json();
+    expect(result.entries[0]).toMatchObject({value:1234567,followName:'Public Hero',online:true});
+    expect((await fetch(serverUrl+'api/rankings?category=bad')).status).toBe(400);
+    expect((await fetch(serverUrl+'api/player?name=bad!')).status).toBe(400);
+    const player=await(await fetch(serverUrl+'api/player?name=Public%20Hero')).json();expect(player.skills[1].level).toBe(99);expect(player.bank.entry.value).toBe(1234567);
+});
+test('anonymous chat broadcasts to two viewers and supplies history on reconnect',async()=>{
+    const connect=()=>new Promise<WebSocket>((resolve,reject)=>{const ws=new WebSocket(serverUrl.replace('http:','ws:')+'chat');ws.onmessage=e=>{if(JSON.parse(String(e.data)).type==='history')resolve(ws);};ws.onerror=()=>reject(new Error('chat connection failed'));});
+    const a=await connect(),b=await connect();
+    try{
+        const received=new Promise<any>(resolve=>{b.onmessage=e=>resolve(JSON.parse(String(e.data)));});
+        a.send(JSON.stringify({name:'Test viewer',text:'Local test message'}));
+        expect((await received).message).toMatchObject({name:'Test viewer',text:'Local test message'});
+        const c=new WebSocket(serverUrl.replace('http:','ws:')+'chat');
+        const history=await new Promise<any>(resolve=>{c.onmessage=e=>resolve(JSON.parse(String(e.data)));});expect(history.messages.at(-1).text).toBe('Local test message');c.close();
+    }finally{a.close();b.close();}
+},5000);

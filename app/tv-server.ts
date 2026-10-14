@@ -1,14 +1,19 @@
 import { join, resolve } from 'node:path';
 import { Director, PLACES, type Player } from './tv/director';
+import { PublicChat } from './tv/chat';
+import { CATEGORIES, PublicHiscores, joinOnline } from './tv/hiscores';
 import { regionFor, SceneSnapshot } from './tv/relay';
 import type { ServerWebSocket } from 'bun';
 
 const SITE = resolve(process.env.TV_SITE_DIR ?? 'tv-build');
 const FEED = process.env.TV_WORLD_FEED ?? 'wss://rs-sdk-demo.fly.dev/worldfeed';
 const director = new Director();
+const hiscores = new PublicHiscores(process.env.TV_HISCORES_ORIGIN ?? 'https://rs-sdk-demo.fly.dev');
 const started = Date.now();
 const peers = new Set<ServerWebSocket<Peer>>();
-type Peer = { channel?: Channel; messages: number; window: number };
+const chatPeers = new Set<ServerWebSocket<Peer>>();
+const chat = new PublicChat(process.env.TV_CHAT_DB ?? join('data', 'tv-chat.sqlite'));
+type Peer = { kind?: 'chat'; ip?: string; channel?: Channel; messages: number; window: number };
 class Channel {
     ws?: WebSocket;
     snapshot = new SceneSnapshot();
@@ -74,6 +79,25 @@ const server = Bun.serve<Peer>({
     async fetch(req, srv) {
         const u = new URL(req.url);
         if (u.pathname === '/health' || u.pathname === '/api/tv') return Response.json(state(), { headers: { ...headers, 'cache-control': 'no-store' } });
+        if (u.pathname === '/chat') {
+            const origin = req.headers.get('origin');
+            if (origin && new URL(origin).host !== u.host) return new Response('Forbidden', { status: 403 });
+            if (chatPeers.size >= 500) return new Response('Chat capacity reached', { status: 503 });
+            const ip = (process.env.TV_TRUST_PROXY === '1' ? req.headers.get('x-forwarded-for')?.split(',').at(-1)?.trim() : '') || srv.requestIP(req)?.address || 'unknown';
+            return srv.upgrade(req, { data: { kind: 'chat', ip, messages: 0, window: Date.now() } }) ? undefined : new Response('WebSocket required', { status: 400 });
+        }
+        if (u.pathname === '/api/rankings' || u.pathname === '/api/player') {
+            try {
+                const fresh = Date.now() - director.rosterAt < 15000;
+                if (u.pathname === '/api/player' && !/^[a-zA-Z0-9 _-]{1,12}$/.test(u.searchParams.get('name') ?? '')) return Response.json({ error: 'Invalid player name' }, { status: 400, headers });
+                if (u.pathname === '/api/player') return Response.json(await hiscores.profile(u.searchParams.get('name') ?? ''), { headers: { ...headers, 'cache-control': 'no-store' } });
+                const id = u.searchParams.get('category') ?? 'overall';
+                if (!CATEGORIES.some(c => c.id === id)) return Response.json({ error: 'Unknown ranking category' }, { status: 400, headers });
+                const snapshot = id === 'combat' ? { value: director.players.slice().sort((a,b) => b[5] - a[5] || a[1].localeCompare(b[1])).map((p,i) => ({ name: p[1], rank: i+1, value: p[5] })), fetchedAt: director.rosterAt, stale: !fresh, source: 'Live world roster' } : await hiscores.board(id);
+                const entries = joinOnline(snapshot.value, director.players, fresh);
+                return Response.json({ category: id, categories: CATEGORIES.map(({id,name,unit}) => ({id,name,unit})), entries: u.searchParams.get('online') === '1' ? entries.filter(p => p.online) : entries, fetchedAt: snapshot.fetchedAt, stale: snapshot.stale, source: snapshot.source, coverage: snapshot.value.length, onlineFresh: fresh, rosterAt: director.rosterAt }, { headers: { ...headers, 'cache-control': 'no-store' } });
+            } catch (e) { return Response.json({ error: (e as Error).message }, { status: 503, headers: { ...headers, 'cache-control': 'no-store' } }); }
+        }
         if (u.pathname === '/worldfeed') {
             const origin = req.headers.get('origin');
             if (origin && new URL(origin).host !== u.host) return new Response('Forbidden', { status: 403 });
@@ -88,9 +112,17 @@ const server = Bun.serve<Peer>({
         return new Response(file, { headers: { ...headers, 'cache-control': /\/static\//.test(u.pathname) ? 'public,max-age=31536000,immutable' : /\/caches\//.test(u.pathname) ? 'public,max-age=3600' : 'no-cache' } });
     },
     websocket: {
-        maxPayloadLength: 1024, idleTimeout: 120, sendPings: true,
-        open(peer) { peers.add(peer); },
+        maxPayloadLength: 2048, idleTimeout: 120, sendPings: true,
+        open(peer) { if (peer.data.kind === 'chat') { chatPeers.add(peer); peer.send(JSON.stringify({ type: 'history', messages: chat.history() })); } else peers.add(peer); },
         message(peer, raw) {
+            if (peer.data.kind === 'chat') {
+                let value: unknown; try { value = JSON.parse(String(raw)); } catch { return; }
+                const result = chat.post(peer.data.ip ?? 'unknown', value);
+                if (typeof result === 'string') { peer.send(JSON.stringify({ type: 'error', error: result })); return; }
+                const frame = JSON.stringify({ type: 'message', message: result });
+                for (const viewer of chatPeers) { if (viewer.getBufferedAmount() > 128 * 1024) viewer.close(1013, 'Reconnect to chat'); else viewer.send(frame); }
+                return;
+            }
             if (Date.now() - peer.data.window > 1000) { peer.data.messages = 0; peer.data.window = Date.now(); }
             if (++peer.data.messages > 30) { peer.close(1008, 'Too many camera updates'); return; }
             try {
@@ -110,9 +142,9 @@ const server = Bun.serve<Peer>({
                 peer.data.channel?.remove(peer); channel.add(peer);
             } catch { /* ignore invalid spectator requests */ }
         },
-        close(peer) { peers.delete(peer); peer.data.channel?.remove(peer); },
+        close(peer) { chatPeers.delete(peer); peers.delete(peer); peer.data.channel?.remove(peer); },
     },
 });
 console.log(`RS-SDK TV listening on ${server.url}`);
-function stop() { clearInterval(directorTimer); for (const c of [rosterFeed, ...scouts, ...channels.values()]) c.stop(); server.stop(true); process.exit(0); }
+function stop() { clearInterval(directorTimer); for (const c of [rosterFeed, ...scouts, ...channels.values()]) c.stop(); server.stop(true); chat.close(); process.exit(0); }
 process.on('SIGTERM', stop); process.on('SIGINT', stop);
