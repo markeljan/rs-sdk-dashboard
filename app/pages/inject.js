@@ -10,6 +10,7 @@
   g.className = 'grp';
   g.innerHTML = `<h3>Accounts</h3>
     ${row('/_rsd/manage', 'Manage accounts', 'Add, remove, reorder, game clients on/off')}
+    ${row('https://live.soko.tools', 'RS-SDK TV', 'Live world camera, players and places')}
     ${row('/_rsd/manage#agent', 'Connect your agent', 'Copy the setup skill for Claude, Codex…')}
     ${me?.user?.email || me?.passwordLogin ? `<button class="srow" type="button" id="rsdLogout"><span>Log out<small>${me?.user?.email ?? ''}</small></span><span class="muted">›</span></button>` : ''}`;
   sheet.insertBefore(g, sheet.querySelector('.grp') ?? null);

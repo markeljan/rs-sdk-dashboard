@@ -4,3 +4,6 @@ data/
 *.log
 .DS_Store
 bots/
+
+.tv-cache/
+tv-build/

@@ -10,6 +10,7 @@ This file is for coding agents working on this repo. To set up or use the dashbo
 | `tools/dashboard/` | The dashboard itself (server + UI), the same code the rs-sdk fleet runs | **No.** Change it in rs-sdk, then sync |
 | `sdk/`, `server/`, `tools/quests/` | The rs-sdk files the dashboard imports (SDK, webclient code for the lite view, fork bot bundle) | **No.** Synced |
 | `app/` | This project's layer: front server, users and auth, accounts, per-user dashboard processes, proxy, API tokens, agent skill, connector | Yes |
+| `tv/` | Public TV controls/CSS overlaid onto a pinned rs-world renderer; build with `scripts/build-tv.ts` | Yes |
 | `app/pages/` | Login, welcome, manage, landing page, and `inject.js` (the Accounts row in the dashboard's Settings) | Yes |
 | `scripts/sync-from-rs-sdk.ts` | Copies `tools/dashboard` and its imports from an rs-sdk checkout | Yes |
 | `infra/aws/` | Hosted deployment (EC2 + Docker + Caddy) | Yes |
@@ -35,6 +36,8 @@ This file is for coding agents working on this repo. To set up or use the dashbo
 
 ```bash
 bun install
+bun run tv:build                            # build public spectator site (pinned rs-world + live cache)
+bun run tv:start                            # public TV locally, port 4750
 bun run check                               # typecheck + app tests (must pass before pushing)
 bun test tools/dashboard                    # the dashboard's own tests (needs Chrome)
 bun scripts/sync-from-rs-sdk.ts ../rs-sdk   # pull dashboard changes from rs-sdk
@@ -43,6 +46,7 @@ RSD_MODE=hosted RSD_DATA_DIR=/tmp/rsd PORT=4751 bun app/cli.ts start   # hosted 
 
 ## Deploying the hosted service (dash.soko.tools)
 
+- `HOST=<ip> infra/aws/deploy-tv.sh`: public TV at live.soko.tools; independent container, preserves dashboard clients. See `docs/live-tv.md`.
 - `HOST=<ip> infra/aws/hot-deploy.sh`: dashboard and `app/pages` changes. Game clients stay logged in.
 - `HOST=<ip> FRONT=1 infra/aws/hot-deploy.sh`: also `app/*.ts`. The front server restarts in place.
 - `HOST=<ip> DOMAIN=dash.soko.tools infra/aws/deploy.sh`: dependency or Dockerfile changes. This rebuilds the

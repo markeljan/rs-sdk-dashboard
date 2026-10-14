@@ -24,3 +24,5 @@ cd /opt/rs-dashboard/src/infra/aws && docker compose -f docker-compose.hosted.ym
 ```
 
 Scaling up: use a bigger instance type and raise `RSD_MAX_CLIENTS` in `/opt/rs-dashboard/src/infra/aws/.env`. Beyond one box, split game-client hosts from the web/API tier. The server already keeps all state in SQLite behind `Store`, so that's the seam to replace.
+
+Public world spectator TV runs separately at **https://live.soko.tools** on the same host. Build with `bun run tv:build`, then deploy with `HOST=<ip> infra/aws/deploy-tv.sh`; this preserves dashboard game clients. See [live TV](../../docs/live-tv.md) for the renderer, relay, controls and recovery.
