@@ -9,6 +9,7 @@ import { decrypt, encrypt, loadKey, makeToken, parseToken } from './crypto';
 import { endpointsFor } from './gateway';
 import { parseBotEnv, parseEnvAccounts, readAccountsFile, scanRsSdk } from './importers';
 import { startServer } from './server';
+import { frontendApi, verifyClerkToken } from './clerk';
 
 process.env.RSD_ADMIN_EMAIL = 'operator@example.com';
 const dataDir = mkdtempSync(join(tmpdir(), 'rsd-app-'));
@@ -50,6 +51,23 @@ describe('pure helpers', () => {
         expect(parseToken(key, t)?.userId).toBe(7);
         expect(parseToken(key, t.replace(/_(\d+)_/, '_8_'))).toBeNull(); // another user id breaks the signature
         expect(parseToken(loadKey(mkdtempSync(join(tmpdir(), 'rsd-k-')), ''), t)).toBeNull();
+    });
+});
+
+describe('clerk (Google sign-in)', () => {
+    test('publishable key -> frontend api host', () => {
+        expect(frontendApi('pk_test_a2Vlbi1lYWdsZS02NjguY2xlcmsuYWNjb3VudHMuZGV2JA')).toBe('keen-eagle-668.clerk.accounts.dev');
+        expect(frontendApi('sk_test_nope')).toBeNull();
+    });
+    test('rejects malformed and unsigned tokens', async () => {
+        const pk = 'pk_test_a2Vlbi1lYWdsZS02NjguY2xlcmsuYWNjb3VudHMuZGV2JA';
+        expect(await verifyClerkToken('nope', pk, [])).toMatchObject({ error: 'malformed token' });
+        const fake = [{ alg: 'none' }, { email: 'x@y.z' }].map(o => Buffer.from(JSON.stringify(o)).toString('base64url')).join('.') + '.sig';
+        expect(await verifyClerkToken(fake, pk, [])).toMatchObject({ error: 'unexpected token algorithm' });
+    });
+    test('the endpoint is off unless a publishable key is configured', async () => {
+        const r = await fetch(`${base}/_rsd/api/auth/clerk`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"token":"x"}' });
+        expect(r.status).toBe(404);
     });
 });
 

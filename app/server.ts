@@ -14,6 +14,8 @@ import { fetchStatus } from './gateway';
 import { parseBotEnv, parseEnvAccounts, readAccountsFile, scanRsSdk } from './importers';
 import { Instances } from './instances';
 import { skillMarkdown, connectScript } from './skill';
+import { frontendApi, verifyClerkToken } from './clerk';
+import { randomBytes } from 'node:crypto';
 
 const PAGES = join(import.meta.dir, 'pages');
 const DASH_PUBLIC = join(import.meta.dir, '..', 'tools', 'dashboard', 'public');
@@ -220,6 +222,7 @@ export function startServer(cfg: Config) {
             return json({
                 mode: cfg.mode, version: VERSION, needsLogin: !user, passwordLogin: cfg.mode === 'local' && !!cfg.localPassword,
                 signups: cfg.mode === 'hosted' && cfg.signups, defaultServer: cfg.defaultServer, origin: origin(req), rsSdk: !!cfg.rsSdkDir,
+                clerk: cfg.mode === 'hosted' && cfg.clerkPublishableKey ? { publishableKey: cfg.clerkPublishableKey, frontendApi: frontendApi(cfg.clerkPublishableKey) } : null,
                 user: user ? { email: user === localUser ? null : user.email, admin: !!user.is_admin, accounts: store.countAccounts(user.id), limits: (l => ({ accounts: Number.isFinite(l.accounts) ? l.accounts : null, clients: l.clients }))(limitsFor(user)) } : null,
             });
         }
@@ -244,6 +247,20 @@ export function startServer(cfg: Config) {
             }
             const u = await store.checkPassword(String(b.email ?? ''), String(b.password ?? ''));
             if (!u) return bad('wrong email or password', 401);
+            return json({ ok: true }, 200, { 'set-cookie': sessionCookie(req, store.createSession(u.id), 30 * 86400) });
+        }
+        if (path === '/auth/clerk' && method === 'POST') {
+            if (cfg.mode !== 'hosted' || !cfg.clerkPublishableKey) return bad('Google sign-in is not enabled here', 404);
+            if (rateLimited(`login:${ip}`, 20)) return bad('too many attempts, try again in a minute', 429);
+            const v = await verifyClerkToken(String((await body(req)).token ?? ''), cfg.clerkPublishableKey, [origin(req), cfg.publicUrl].filter(Boolean));
+            if ('error' in v) return bad(`sign-in failed: ${v.error}`, 401);
+            let u = store.getUserByEmail(v.email);
+            if (!u) {
+                if (!cfg.signups) return bad('sign-ups are disabled', 403);
+                // no password: this account signs in with Google (a password can be set later)
+                u = await store.createUser(v.email, randomBytes(24).toString('base64url'), cfg.adminEmails.length ? cfg.adminEmails.includes(v.email.toLowerCase()) : store.userCount() === 0);
+                log(`signup (google): user ${u.id}`);
+            }
             return json({ ok: true }, 200, { 'set-cookie': sessionCookie(req, store.createSession(u.id), 30 * 86400) });
         }
         if (path === '/auth/logout' && method === 'POST') {
@@ -391,7 +408,7 @@ export function startServer(cfg: Config) {
             if (path.startsWith('/_rsd/')) {
                 const f = normalize(join(PAGES, path.slice('/_rsd/'.length)));
                 if (f.startsWith(PAGES) && existsSync(f) && !f.endsWith('/')) return page(f.slice(PAGES.length + 1));
-                if (path === '/_rsd/' || path === '/_rsd/login' || path === '/_rsd/welcome' || path === '/_rsd/manage') return page('manage.html');
+                if (path === '/_rsd/' || path === '/_rsd/login' || path === '/_rsd/welcome' || path === '/_rsd/manage' || path === '/_rsd/sso-callback') return page('manage.html');
                 return new Response('not found', { status: 404 });
             }
             // PWA shell (no account data): served before login so the install prompt and home-screen icon work

@@ -16,8 +16,44 @@ async function api(path, opts = {}) {
 }
 async function copy(text, what = 'Copied') { try { await navigator.clipboard.writeText(text); toast(what); } catch { toast('Copy failed - select the text and copy it'); } }
 
+// ------------------------------------------------------------------ Clerk (Continue with Google), hosted only
+async function clerk() {
+  if (!me?.clerk) return null;
+  if (window.Clerk?.loaded) return window.Clerk;
+  if (!window.Clerk) await new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = `https://${me.clerk.frontendApi}/npm/@clerk/clerk-js@6.39.0/dist/clerk.browser.js`;
+    s.async = true; s.crossOrigin = 'anonymous';
+    s.setAttribute('data-clerk-publishable-key', me.clerk.publishableKey);
+    s.onload = ok; s.onerror = () => fail(new Error('could not load Google sign-in'));
+    document.head.appendChild(s);
+  });
+  await window.Clerk.load();
+  return window.Clerk;
+}
+async function clerkExchange(C) {
+  const token = await C.session.getToken();
+  await api('/auth/clerk', { body: { token } });
+  location.href = '/';
+}
+async function google() {
+  const C = await clerk();
+  if (C.session) return clerkExchange(C);
+  await C.client.signIn.authenticateWithRedirect({ strategy: 'oauth_google', redirectUrl: `${location.origin}/_rsd/sso-callback`, redirectUrlComplete: `${location.origin}/_rsd/login?clerk=1` });
+}
+
 async function boot() {
   me = await api('/me');
+  const qs = new URLSearchParams(location.search);
+  if (location.pathname === '/_rsd/sso-callback' && me.clerk) {
+    app.innerHTML = '<p class="muted" style="text-align:center;margin-top:30vh">Signing in…</p>';
+    const C = await clerk();
+    return C.handleRedirectCallback({ signInForceRedirectUrl: '/_rsd/login?clerk=1', signUpForceRedirectUrl: '/_rsd/login?clerk=1' });
+  }
+  if (me.clerk && qs.get('logout')) { try { const C = await clerk(); if (C?.session) await C.signOut(); } catch { /* offline */ } history.replaceState(null, '', '/_rsd/login'); }
+  else if (me.needsLogin && me.clerk && qs.get('clerk')) {
+    try { const C = await clerk(); if (C?.session) return await clerkExchange(C); } catch (err) { toast(err.message, 5000); }
+  }
   if (me.needsLogin) return renderAuth(me.signups && new URLSearchParams(location.search).get('mode') !== 'login' ? 'signup' : 'login');
   [{ token }, skill] = await Promise.all([api('/token'), api('/skill')]);
   render();
@@ -35,11 +71,13 @@ function renderAuth(mode) {
       <label class="f">Password<input class="input" id="pw" type="password" required minlength="${local ? 1 : 8}" autocomplete="${mode === 'signup' ? 'new-password' : 'current-password'}"></label>
       <div class="err" id="err"></div>
       <button class="btn primary">${local ? 'Unlock' : mode === 'signup' ? 'Sign up' : 'Log in'}</button>
+      ${!local && me.clerk ? `<div class="or"><span>or</span></div><button type="button" class="btn google" id="gbtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continue with Google</button>` : ''}
       ${!local && mode === 'signup' ? '<span class="hint">Watch and control your rs-sdk bots from anywhere. Game passwords are stored encrypted and only sent to the game server you pick.</span>' : ''}
     </form>
     ${local ? '' : `<p class="hint" style="text-align:center">${mode === 'signup' ? 'Have an account? <a href="#" id="sw">Log in</a>' : me.signups ? 'New here? <a href="#" id="sw">Create an account</a>' : ''}</p>`}
   </div>`;
   $('#sw')?.addEventListener('click', e => { e.preventDefault(); renderAuth(mode === 'signup' ? 'login' : 'signup'); });
+  $('#gbtn')?.addEventListener('click', async e => { e.currentTarget.disabled = true; try { await google(); } catch (err) { $('#err').textContent = err.message; e.currentTarget.disabled = false; } });
   $('#f').addEventListener('submit', async e => {
     e.preventDefault();
     try { await api(mode === 'signup' && !local ? '/auth/signup' : '/auth/login', { body: { email: $('#email')?.value, password: $('#pw').value } }); await boot(); }
@@ -177,7 +215,7 @@ function bind(accounts) {
     };
   });
   $('#pwForm')?.addEventListener('submit', async e => { e.preventDefault(); try { await api('/auth/password', { body: { current: $('#pwCur').value, next: $('#pwNew').value } }); toast('Password changed'); $('#pwCur').value = $('#pwNew').value = ''; } catch (err) { toast(err.message); } });
-  $('#logout')?.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.href = '/_rsd/login'; });
+  $('#logout')?.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.href = '/_rsd/login?logout=1'; });
   $('#delMe')?.addEventListener('click', async () => {
     const pw = prompt('This deletes your dashboard account, its accounts list and stops its game clients. Enter your password to confirm:');
     if (!pw) return;

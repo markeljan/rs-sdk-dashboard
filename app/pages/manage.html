@@ -73,6 +73,8 @@ main { max-width: 860px; margin: 0 auto; padding: 14px; display: grid; gap: 12px
 .copywrap .btn { position: absolute; top: 6px; right: 6px; }
 .grid2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+.or { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 12px; } .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.btn.google { background: #fff; color: #1f1f1f; border-color: #dadce0; font-weight: 600; gap: 10px; }
 #toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50; max-width: calc(100% - 32px); }
 #toast.show { opacity: 1; }
 </style>

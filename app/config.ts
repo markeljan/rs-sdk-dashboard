@@ -31,6 +31,8 @@ export function loadConfig(over: Record<string, string | undefined> = {}) {
         accountsFile: e.RSD_ACCOUNTS_FILE || '',
         rsSdkDir: e.RS_SDK_DIR ? resolve(e.RS_SDK_DIR.replace(/^~(?=\/|$)/, homedir())) : '',
         signups: bool(e.RSD_SIGNUPS, true),
+        /** Hosted: Clerk publishable key - adds "Continue with Google" (whatever providers the Clerk app enables). */
+        clerkPublishableKey: e.RSD_CLERK_PUBLISHABLE_KEY || '',
         /** Comma-separated: these users are admins (no per-user limits). */
         adminEmails: (e.RSD_ADMIN_EMAIL || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean),
         maxAccountsPerUser: num(e.RSD_MAX_ACCOUNTS, mode === 'hosted' ? 20 : 1000),

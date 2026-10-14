@@ -15,6 +15,6 @@
   sheet.insertBefore(g, sheet.querySelector('.grp') ?? null);
   document.getElementById('rsdLogout')?.addEventListener('click', async () => {
     await fetch('/_rsd/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-    location.href = '/_rsd/login';
+    location.href = '/_rsd/login?logout=1';
   });
 })();
