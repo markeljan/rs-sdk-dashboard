@@ -50,6 +50,17 @@ const viewerSource = readFileSync(viewerPath, 'utf8');
 if (!viewerSource.includes('document.body.dataset.tvMode')) writeFileSync(viewerPath, viewerSource.replace('params["v"] = 1;', 'if (document.body.dataset.tvMode === "auto") delete params["follow"]; params["v"] = 1;'));
 const rendererPath = join(source, 'src/mapviewer/webgl/WebGLMapViewerRenderer.ts');
 writeFileSync(rendererPath, readFileSync(rendererPath, 'utf8').replace('maxLevel: number = Scene.MAX_LEVELS - 1;', 'maxLevel: number = 0;'));
+// Reverse just the arrow-key rotations; pointer, joystick and WASD input keep their existing mapping.
+const inputPath = join(source, 'src/mapviewer/MapViewerRenderer.ts');
+const inputSource = readFileSync(inputPath, 'utf8');
+const arrowsMarker = '// TV: RuneScape arrow-key camera directions.';
+if (!inputSource.includes(arrowsMarker)) {
+    let count = 0;
+    const flipped = inputSource.replace(/if \(inputManager\.isKeyDown\("(ArrowUp|ArrowDown|ArrowRight|ArrowLeft)"\)\) \{\s*camera\.(updatePitch|updateYaw)\(camera\.(pitch|yaw), (-?)(deltaPitch|deltaYaw)\);/g,
+        (_match, key, method, axis, sign, delta) => { count++; return `if (inputManager.isKeyDown("${key}")) {\n            camera.${method}(camera.${axis}, ${sign ? '' : '-'}${delta});`; });
+    if (count !== 4) throw new Error(`Expected four arrow-key controls, found ${count}`);
+    writeFileSync(inputPath, arrowsMarker + '\n' + flipped);
+}
 const controlsPath = join(source, 'src/mapviewer/MapViewerControls.tsx');
 writeFileSync(controlsPath, readFileSync(controlsPath, 'utf8').replace('hidden={hidden || isMobileDevice}', 'hidden={true}'));
 await run(['bun', 'install', '--ignore-scripts']);
