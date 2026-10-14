@@ -23,9 +23,19 @@ export function RankingsPanel({ follow }: { follow(name: string): void }) {
         void load(); const timer = setInterval(load, 10000);
         return () => { cancelled = true; controller.abort(); clearInterval(timer); };
     }, [category, online]);
+    const primary = [
+        { id: 'overall', label: 'Overall', icon: 'skills.png' },
+        { id: 'bank', label: 'Bank', icon: 'coins.png' },
+        { id: 'equipment', label: 'Equipment', icon: 'dragon-chainbody.png' },
+    ];
+    const isPrimary = primary.some(p => p.id === category);
     const selected = CATEGORIES.find(c => c.id === category)!;
     return <>
-        <div className="tv-ranking-filters"><select aria-label="Rank accounts by" value={category} onChange={e => setCategory(e.target.value)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label><input type="checkbox" checked={online} onChange={e => setOnline(e.target.checked)} /> Online only</label></div>
+        <div className="tv-ranking-filters">
+            <div className="tv-ranking-shortcuts" role="group" aria-label="Popular rankings">{primary.map(p => <button key={p.id} type="button" aria-label={`Rank by ${p.label}`} aria-pressed={category === p.id} className={category === p.id ? 'selected' : ''} onClick={() => setCategory(p.id)}><img src={`/ranking-icons/${p.icon}`} alt=""/><span>{p.label}</span></button>)}</div>
+            <select aria-label="Other rankings" value={isPrimary ? '' : category} onChange={e => setCategory(e.target.value)}><option value="" disabled>Other rankings…</option>{CATEGORIES.filter(c => !primary.some(p => p.id === c.id)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+            <label><input type="checkbox" checked={online} onChange={e => setOnline(e.target.checked)} /> Online only</label>
+        </div>
         <div className="tv-content tv-ranking-list">
             {loading && <p className="tv-muted">Loading public hiscores…</p>}
             {error && <p className="tv-muted" role="status">{error}. Retrying shortly.</p>}
